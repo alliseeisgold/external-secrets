@@ -47,10 +47,17 @@ type YandexCloudProvider struct {
 	newSecretGetterFunc NewSecretGetterFunc
 	newIamTokenFunc     NewIamTokenFunc
 
-	secretGetteMap       map[string]SecretGetter // apiEndpoint -> SecretGetter
+	secretGetteMap       map[secretGetterKey]SecretGetter // secretGetterKey -> SecretGetter
 	secretGetterMapMutex sync.Mutex
 	iamTokenMap          map[iamTokenKey]*IamToken
 	iamTokenMapMutex     sync.Mutex
+}
+
+// if we have some
+type secretGetterKey struct {
+	endpoint    string
+	meaningType string
+	folderID    string
 }
 
 type iamTokenKey struct {
@@ -73,7 +80,7 @@ func InitYandexCloudProvider(
 		adaptInputFunc:      adaptInputFunc,
 		newSecretGetterFunc: newSecretGetterFunc,
 		newIamTokenFunc:     newIamTokenFunc,
-		secretGetteMap:      make(map[string]SecretGetter),
+		secretGetteMap:      make(map[secretGetterKey]SecretGetter),
 		iamTokenMap:         make(map[iamTokenKey]*IamToken),
 	}
 
@@ -91,7 +98,7 @@ func InitYandexCloudProvider(
 
 type NewSecretSetterFunc func()
 type AdaptInputFunc func(store esv1.GenericStore) (*SecretsClientInput, error)
-type NewSecretGetterFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (SecretGetter, error)
+type NewSecretGetterFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, meaningOfKey *MeaningOfKeyConfig) (SecretGetter, error)
 type NewIamTokenFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*IamToken, error)
 
 type IamToken struct {
@@ -99,10 +106,16 @@ type IamToken struct {
 	ExpiresAt time.Time
 }
 
+type MeaningOfKeyConfig struct {
+	Type     string
+	FolderID string
+}
+
 type SecretsClientInput struct {
 	APIEndpoint   string
 	AuthorizedKey esmeta.SecretKeySelector
 	CACertificate *esmeta.SecretKeySelector
+	MeaningOfKey  MeaningOfKeyConfig
 }
 
 func (p *YandexCloudProvider) Capabilities() esv1.SecretStoreCapabilities {
@@ -148,7 +161,7 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 		caCertificateData = []byte(caCert)
 	}
 
-	secretGetter, err := p.getOrCreateSecretGetter(ctx, input.APIEndpoint, &authorizedKey, caCertificateData)
+	secretGetter, err := p.getOrCreateSecretGetter(ctx, input.APIEndpoint, &authorizedKey, caCertificateData, &input.MeaningOfKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Yandex.Cloud client: %w", err)
 	}
@@ -161,20 +174,33 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 	return &yandexCloudSecretsClient{secretGetter, nil, iamToken.Token}, nil
 }
 
-func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (SecretGetter, error) {
+func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, meaningOfKey *MeaningOfKeyConfig) (SecretGetter, error) {
+	mType, mFolder := "id", ""
+	if meaningOfKey != nil {
+		mType = meaningOfKey.Type // "name" or "id"
+		if mType == "name" {
+			mFolder = meaningOfKey.FolderID // will be "" if type!="name"
+		}
+	}
+
+	key := secretGetterKey{
+		endpoint:    apiEndpoint,
+		meaningType: mType,
+		folderID:    mFolder,
+	}
+
 	p.secretGetterMapMutex.Lock()
 	defer p.secretGetterMapMutex.Unlock()
 
-	if _, ok := p.secretGetteMap[apiEndpoint]; !ok {
+	if _, ok := p.secretGetteMap[key]; !ok {
 		p.logger.Info("creating SecretGetter", "apiEndpoint", apiEndpoint)
-
-		secretGetter, err := p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate)
+		secretGetter, err := p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate, meaningOfKey)
 		if err != nil {
 			return nil, err
 		}
-		p.secretGetteMap[apiEndpoint] = secretGetter
+		p.secretGetteMap[key] = secretGetter
 	}
-	return p.secretGetteMap[apiEndpoint], nil
+	return p.secretGetteMap[key], nil
 }
 
 func (p *YandexCloudProvider) getOrCreateIamToken(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*IamToken, error) {
