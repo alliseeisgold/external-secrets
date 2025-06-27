@@ -47,19 +47,31 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 		caCertificate = &storeSpecYandexLockbox.CAProvider.Certificate
 	}
 
+	var meaningOfKey common.MeaningOfKeyConfig
+	if storeSpecYandexLockbox.MeaningOfKey != nil {
+		if storeSpecYandexLockbox.MeaningOfKey.Type != "name" && storeSpecYandexLockbox.MeaningOfKey.Type != "id" {
+			return nil, errors.New("invalid meaningOfKey type: must be 'name' or 'id'")
+		}
+		if storeSpecYandexLockbox.MeaningOfKey.Type == "name" && storeSpecYandexLockbox.MeaningOfKey.FolderID == "" {
+			return nil, errors.New("folderId is required when meaningOfKey type is 'name'")
+		}
+		meaningOfKey = common.MeaningOfKeyConfig(*storeSpecYandexLockbox.MeaningOfKey)
+	}
+
 	return &common.SecretsClientInput{
 		APIEndpoint:   storeSpecYandexLockbox.APIEndpoint,
 		AuthorizedKey: storeSpecYandexLockbox.Auth.AuthorizedKey,
 		CACertificate: caCertificate,
+		MeaningOfKey:  meaningOfKey,
 	}, nil
 }
 
-func newSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (common.SecretGetter, error) {
+func newSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, meaningOfKey *common.MeaningOfKeyConfig) (common.SecretGetter, error) {
 	lockboxClient, err := client.NewGrpcLockboxClient(ctx, apiEndpoint, authorizedKey, caCertificate)
 	if err != nil {
 		return nil, err
 	}
-	return newLockboxSecretGetter(lockboxClient)
+	return newLockboxSecretGetter(lockboxClient, meaningOfKey)
 }
 
 func init() {
