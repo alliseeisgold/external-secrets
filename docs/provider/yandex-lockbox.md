@@ -85,3 +85,43 @@ The operator will fetch the Yandex Lockbox secret and inject it as a `Kind=Secre
 ```yaml
 kubectl get secret k8s-secret -n <namespace> | -o jsonpath='{.data.password}' | base64 -d
 ```
+
+---
+
+### Key resolution by name and folder
+If you want to look up secret by its `name` instead of `ID`, just add the `meaningOfKey` block to your  [SecretStore](../api/secretstore.md). In the example above, we created a secret called `lockbox-secret`. If we want to sync by the name of this secret, then the [SecretStore](../api/secretstore.md) will be like this:
+```yaml
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: secret-store
+spec:
+  provider:
+    yandexlockbox:
+      auth:
+        authorizedKeySecretRef:
+          name: yc-auth
+          key: authorized-key
+      meaningOfKey:
+        type: name  # type can be name or id
+        folderId: ***** # required if type is name
+```
+Then your [ExternalSecret](../api/externalsecret.md) can refer to the Lockbox secret by `name` instead of `ID`:
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: external-secret
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: secret-store
+    kind: SecretStore
+  target:
+    name: k8s-secret
+  data:
+  - secretKey: password
+    remoteRef:
+      key: lockbox-secret # key is interpreted as secret name
+      property: password # (optional) payload entry key
+```
