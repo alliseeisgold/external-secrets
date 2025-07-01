@@ -28,23 +28,17 @@ import (
 // Implementation of common.SecretGetter.
 type lockboxSecretGetter struct {
 	lockboxClient client.LockboxClient
-	meaningOfKey  common.MeaningOfKeyConfig
 }
 
-func newLockboxSecretGetter(lockboxClient client.LockboxClient, meaningOfKey *common.MeaningOfKeyConfig) (common.SecretGetter, error) {
-	config := common.MeaningOfKeyConfig{}
-	if meaningOfKey != nil {
-		config = *meaningOfKey
-	}
+func newLockboxSecretGetter(lockboxClient client.LockboxClient) (common.SecretGetter, error) {
 	return &lockboxSecretGetter{
 		lockboxClient: lockboxClient,
-		meaningOfKey:  config,
 	}, nil
 }
 
-func (g *lockboxSecretGetter) GetSecret(ctx context.Context, iamToken, resourceID, versionID, property string) ([]byte, error) {
-	if g.meaningOfKey.Type == "name" {
-		entriesMap, err := g.lockboxClient.GetExPayload(ctx, iamToken, g.meaningOfKey.FolderID, resourceID, versionID)
+func (g *lockboxSecretGetter) GetSecret(ctx context.Context, iamToken, resourceID string, lookupBy common.LookUpBy, folderID, versionID, property string) ([]byte, error) {
+	if lookupBy == common.NAME {
+		entriesMap, err := g.lockboxClient.GetExPayload(ctx, iamToken, folderID, resourceID, versionID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to request secret payload to get secret: %w", err)
 		}
@@ -91,9 +85,9 @@ func (g *lockboxSecretGetter) GetSecret(ctx context.Context, iamToken, resourceI
 	return getValueAsBinary(entry)
 }
 
-func (g *lockboxSecretGetter) GetSecretMap(ctx context.Context, iamToken, resourceID, versionID string) (map[string][]byte, error) {
-	if g.meaningOfKey.Type == "name" {
-		entriesMap, err := g.lockboxClient.GetExPayload(ctx, iamToken, g.meaningOfKey.FolderID, resourceID, versionID)
+func (g *lockboxSecretGetter) GetSecretMap(ctx context.Context, iamToken, resourceID string, lookupBy common.LookUpBy, folderID, versionID string) (map[string][]byte, error) {
+	if lookupBy == common.NAME {
+		entriesMap, err := g.lockboxClient.GetExPayload(ctx, iamToken, folderID, resourceID, versionID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to request secret payload to get secret map: %w", err)
 		}
