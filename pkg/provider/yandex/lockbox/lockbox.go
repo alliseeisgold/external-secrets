@@ -47,7 +47,7 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 		caCertificate = &storeSpecYandexLockbox.CAProvider.Certificate
 	}
 
-	var lookupBy common.LookUpBy
+	var resourceKeyType common.ResourceKeyType
 	var folderID string
 	if storeSpecYandexLockbox.MeaningOfKey != nil {
 		if storeSpecYandexLockbox.MeaningOfKey.Type != "name" && storeSpecYandexLockbox.MeaningOfKey.Type != "id" {
@@ -58,19 +58,19 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 		}
 		switch storeSpecYandexLockbox.MeaningOfKey.Type {
 		case "name":
-			lookupBy = common.NAME
+			resourceKeyType = common.NAME
 			folderID = storeSpecYandexLockbox.MeaningOfKey.FolderID
 		case "id":
-			lookupBy = common.ID
+			resourceKeyType = common.ID
 		}
 	}
 
 	return &common.SecretsClientInput{
-		APIEndpoint:   storeSpecYandexLockbox.APIEndpoint,
-		AuthorizedKey: storeSpecYandexLockbox.Auth.AuthorizedKey,
-		CACertificate: caCertificate,
-		LookupBy:      lookupBy,
-		FolderID:      folderID,
+		APIEndpoint:     storeSpecYandexLockbox.APIEndpoint,
+		AuthorizedKey:   storeSpecYandexLockbox.Auth.AuthorizedKey,
+		CACertificate:   caCertificate,
+		ResourceKeyType: resourceKeyType,
+		FolderID:        folderID,
 	}, nil
 }
 
