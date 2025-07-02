@@ -47,7 +47,7 @@ type YandexCloudProvider struct {
 	newSecretGetterFunc NewSecretGetterFunc
 	newIamTokenFunc     NewIamTokenFunc
 
-	secretGetteMap       map[string]SecretGetter // string -> SecretGetter
+	secretGetteMap       map[string]SecretGetter // apiEndpoint -> SecretGetter
 	secretGetterMapMutex sync.Mutex
 	iamTokenMap          map[iamTokenKey]*IamToken
 	iamTokenMapMutex     sync.Mutex
@@ -100,17 +100,17 @@ type IamToken struct {
 }
 
 type SecretsClientInput struct {
-	APIEndpoint   string
-	AuthorizedKey esmeta.SecretKeySelector
-	CACertificate *esmeta.SecretKeySelector
-	LookupBy      LookUpBy
-	FolderID      string
+	APIEndpoint     string
+	AuthorizedKey   esmeta.SecretKeySelector
+	CACertificate   *esmeta.SecretKeySelector
+	ResourceKeyType ResourceKeyType
+	FolderID        string
 }
 
-type LookUpBy int
+type ResourceKeyType int
 
 const (
-	ID LookUpBy = iota
+	ID ResourceKeyType = iota
 	NAME
 )
 
@@ -167,7 +167,7 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 		return nil, fmt.Errorf("failed to create IAM token: %w", err)
 	}
 
-	return &yandexCloudSecretsClient{secretGetter, nil, iamToken.Token, input.LookupBy, input.FolderID}, nil
+	return &yandexCloudSecretsClient{secretGetter, nil, iamToken.Token, input.ResourceKeyType, input.FolderID}, nil
 }
 
 func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (SecretGetter, error) {
