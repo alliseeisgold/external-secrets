@@ -37,6 +37,11 @@ spec:
         authorizedKeySecretRef:
           name: yc-auth
           key: authorized-key
+
+    # Optionally, to enable fetching secrets by name:
+    #
+    # fetchByName: # place "fetchByName:" on the same level as "auth:"
+    #   folderId: ***** # ID of the folder to fetch secrets from
 ```
 
 **NOTE:** In case of a `ClusterSecretStore`, Be sure to provide `namespace` in all `authorizedKeySecretRef` with the namespace where the secret resides.
@@ -77,51 +82,17 @@ spec:
   data:
   - secretKey: password # the target k8s secret key
     remoteRef:
-      key: ***** # ID of lockbox-secret
+      # If fetching secrets by ID is enabled:
+      key: ***** # the ID of lockbox-secret
       property: password # (optional) payload entry key of lockbox-secret
+
+      # If fetching secrets by name is enabled:
+      #
+      # key: lockbox-secret # the name of lockbox-secret, i.e. just "lockbox-secret"
+      # property: password # (optional) payload entry key of lockbox-secret
 ```
 
 The operator will fetch the Yandex Lockbox secret and inject it as a `Kind=Secret`
 ```yaml
-kubectl get secret k8s-secret -n <namespace> | -o jsonpath='{.data.password}' | base64 -d
-```
-
----
-
-### Key resolution by name and folder
-If you want to look up secret by its `name` instead of `ID`, just add the `meaningOfKey` block to your  [SecretStore](../api/secretstore.md). In the example above, we created a secret called `lockbox-secret`. If we want to sync by the name of this secret, then the [SecretStore](../api/secretstore.md) will be like this:
-```yaml
-apiVersion: external-secrets.io/v1
-kind: SecretStore
-metadata:
-  name: secret-store
-spec:
-  provider:
-    yandexlockbox:
-      auth:
-        authorizedKeySecretRef:
-          name: yc-auth
-          key: authorized-key
-      meaningOfKey:
-        type: name  # type can be name or id
-        folderId: ***** # required if type is name
-```
-Then your [ExternalSecret](../api/externalsecret.md) can refer to the Lockbox secret by `name` instead of `ID`:
-```yaml
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: external-secret
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: secret-store
-    kind: SecretStore
-  target:
-    name: k8s-secret
-  data:
-  - secretKey: password
-    remoteRef:
-      key: lockbox-secret # key is interpreted as secret name
-      property: password # (optional) payload entry key
+kubectl get secret k8s-secret -n <namespace> -o jsonpath='{.data.password}' | base64 -d
 ```
