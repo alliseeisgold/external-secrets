@@ -91,7 +91,7 @@ func InitYandexCloudProvider(
 
 type NewSecretSetterFunc func()
 type AdaptInputFunc func(store esv1.GenericStore) (*SecretsClientInput, error)
-type NewSecretGetterFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, lookupBy LookUpBy) (SecretGetter, error)
+type NewSecretGetterFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (SecretGetter, error)
 type NewIamTokenFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*IamToken, error)
 
 type IamToken struct {
@@ -157,7 +157,7 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 		caCertificateData = []byte(caCert)
 	}
 
-	secretGetter, err := p.getOrCreateSecretGetter(ctx, input.APIEndpoint, &authorizedKey, caCertificateData, input.LookupBy)
+	secretGetter, err := p.getOrCreateSecretGetter(ctx, input.APIEndpoint, &authorizedKey, caCertificateData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Yandex.Cloud client: %w", err)
 	}
@@ -170,13 +170,13 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 	return &yandexCloudSecretsClient{secretGetter, nil, iamToken.Token, input.LookupBy, input.FolderID}, nil
 }
 
-func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, lookupBy LookUpBy) (SecretGetter, error) {
+func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (SecretGetter, error) {
 	p.secretGetterMapMutex.Lock()
 	defer p.secretGetterMapMutex.Unlock()
 
 	if _, ok := p.secretGetteMap[apiEndpoint]; !ok {
 		p.logger.Info("creating SecretGetter", "apiEndpoint", apiEndpoint)
-		secretGetter, err := p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate, lookupBy)
+		secretGetter, err := p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate)
 		if err != nil {
 			return nil, err
 		}
