@@ -28,16 +28,11 @@ type YandexLockboxCAProvider struct {
 	Certificate esmeta.SecretKeySelector `json:"certSecretRef,omitempty"`
 }
 
-// MeaningOfKey defines how to interpret the key field in ExternalSecret
-type MeaningOfKey struct {
-	// Type of the key - either "name" or "id"
-	// +kubebuilder:validation:Enum=name;id
-	Type string `json:"type"`
+type FetchByID struct{}
 
+type FetchByName struct {
 	// FolderID where to search for the secret when type is "name"
-	// Required when type is "name", ignored when type is "id"
-	// +optional
-	FolderID string `json:"folderId,omitempty"`
+	FolderID string `json:"folderId"`
 }
 
 // YandexLockboxProvider Configures a store to sync secrets using the Yandex Lockbox provider.
@@ -53,7 +48,11 @@ type YandexLockboxProvider struct {
 	// +optional
 	CAProvider *YandexLockboxCAProvider `json:"caProvider,omitempty"`
 
-	// MeaningOfKey defines how to interpret the key field in ExternalSecret
+	// FetchByID interprets key as ID in ExternalSecret
 	// +optional
-	MeaningOfKey *MeaningOfKey `json:"meaningOfKey,omitempty"`
+	FetchByID *FetchByID `json:"fetchByID,omitempty"`
+
+	// FetchByName interprets key as name in ExternalSecret
+	// +optional
+	FetchByName *FetchByName `json:"fetchByName,omitempty"`
 }
