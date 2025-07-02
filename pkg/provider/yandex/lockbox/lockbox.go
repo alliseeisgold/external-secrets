@@ -50,18 +50,17 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	var resourceKeyType common.ResourceKeyType
 	var folderID string
 	if storeSpecYandexLockbox.MeaningOfKey != nil {
-		if storeSpecYandexLockbox.MeaningOfKey.Type != "name" && storeSpecYandexLockbox.MeaningOfKey.Type != "id" {
-			return nil, errors.New("invalid meaningOfKey type: must be 'name' or 'id'")
-		}
-		if storeSpecYandexLockbox.MeaningOfKey.Type == "name" && storeSpecYandexLockbox.MeaningOfKey.FolderID == "" {
-			return nil, errors.New("folderId is required when meaningOfKey type is 'name'")
-		}
 		switch storeSpecYandexLockbox.MeaningOfKey.Type {
 		case "name":
+			if storeSpecYandexLockbox.MeaningOfKey.FolderID == "" {
+				return nil, errors.New("folderId is required when meaningOfKey type is 'name'")
+			}
 			resourceKeyType = common.NAME
 			folderID = storeSpecYandexLockbox.MeaningOfKey.FolderID
 		case "id":
 			resourceKeyType = common.ID
+		default:
+			return nil, errors.New("invalid meaningOfKey type: must be 'name' or 'id'")
 		}
 	}
 
