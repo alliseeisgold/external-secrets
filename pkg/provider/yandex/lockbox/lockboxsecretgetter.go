@@ -38,7 +38,7 @@ func newLockboxSecretGetter(lockboxClient client.LockboxClient) (common.SecretGe
 
 func (g *lockboxSecretGetter) GetSecret(ctx context.Context, iamToken, resourceKey string, resourceKeyType common.ResourceKeyType, folderID, versionID, property string) ([]byte, error) {
 	switch resourceKeyType {
-	case common.ID:
+	case common.ResourceKeyTypeId:
 		entries, err := g.lockboxClient.GetPayloadEntries(ctx, iamToken, resourceKey, versionID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to request secret payload to get secret: %w", err)
@@ -66,7 +66,7 @@ func (g *lockboxSecretGetter) GetSecret(ctx context.Context, iamToken, resourceK
 		}
 		return getValueAsBinary(entry)
 
-	case common.NAME:
+	case common.ResourceKeyTypeName:
 		entriesMap, err := g.lockboxClient.GetExPayload(ctx, iamToken, folderID, resourceKey, versionID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to request secret payload to get secret: %w", err)
@@ -93,7 +93,7 @@ func (g *lockboxSecretGetter) GetSecret(ctx context.Context, iamToken, resourceK
 
 func (g *lockboxSecretGetter) GetSecretMap(ctx context.Context, iamToken, resourceKey string, resourceKeyType common.ResourceKeyType, folderID, versionID string) (map[string][]byte, error) {
 	switch resourceKeyType {
-	case common.ID:
+	case common.ResourceKeyTypeId:
 		entries, err := g.lockboxClient.GetPayloadEntries(ctx, iamToken, resourceKey, versionID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to request secret payload to get secret map: %w", err)
@@ -109,7 +109,7 @@ func (g *lockboxSecretGetter) GetSecretMap(ctx context.Context, iamToken, resour
 		}
 		return secretMap, nil
 
-	case common.NAME:
+	case common.ResourceKeyTypeName:
 		entriesMap, err := g.lockboxClient.GetExPayload(ctx, iamToken, folderID, resourceKey, versionID)
 		if err != nil {
 			return nil, fmt.Errorf("unable to request secret payload to get secret map: %w", err)
