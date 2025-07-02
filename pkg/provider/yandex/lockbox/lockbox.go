@@ -53,10 +53,10 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 		if storeSpecYandexLockbox.FetchByName.FolderID == "" {
 			return nil, errors.New("folderId is required when fetchByName is true")
 		}
-		resourceKeyType = common.NAME
+		resourceKeyType = common.ResourceKeyTypeName
 		folderID = storeSpecYandexLockbox.FetchByName.FolderID
 	} else {
-		resourceKeyType = common.ID
+		resourceKeyType = common.ResourceKeyTypeId
 	}
 
 	return &common.SecretsClientInput{
