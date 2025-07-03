@@ -5950,50 +5950,6 @@ bool
 <td></td>
 </tr></tbody>
 </table>
-<h3 id="external-secrets.io/v1.MeaningOfKey">MeaningOfKey
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#external-secrets.io/v1.YandexCertificateManagerProvider">YandexCertificateManagerProvider</a>, 
-<a href="#external-secrets.io/v1.YandexLockboxProvider">YandexLockboxProvider</a>)
-</p>
-<p>
-<p>MeaningOfKey defines how to interpret the key field in ExternalSecret</p>
-</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>type</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Type of the key - either &ldquo;name&rdquo; or &ldquo;id&rdquo;</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>folderId</code></br>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>FolderID where to search for the secret when type is &ldquo;name&rdquo;
-Required when type is &ldquo;name&rdquo;, ignored when type is &ldquo;id&rdquo;</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="external-secrets.io/v1.NTLMProtocol">NTLMProtocol
 </h3>
 <p>
@@ -10444,6 +10400,37 @@ YandexCertificateManagerCAProvider
 <td>
 <em>(Optional)</em>
 <p>The provider for the CA bundle to use to validate Yandex.Cloud server certificate.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>fetchByID</code></br>
+<em>
+<a href="#external-secrets.io/v1.FetchByID">
+FetchByID
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FetchByID enables fetching secrets by ID.
+The values in ExternalSecret <code>data.secretKey.remoteRef.key</code> field will be interpreted as IDs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>fetchByName</code></br>
+<em>
+<a href="#external-secrets.io/v1.FetchByName">
+FetchByName
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FetchByName enables fetching secrets by name.
+The values in ExternalSecret <code>data.secretKey.remoteRef.key</code> field will be interpreted as name</p>
+</td>
 </tr>
 </tbody>
 </table>
