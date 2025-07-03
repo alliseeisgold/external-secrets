@@ -31,7 +31,7 @@ type YandexLockboxCAProvider struct {
 type FetchByID struct{}
 
 type FetchByName struct {
-	// FolderID where to search for the secret when type is "name"
+	// The folder to fetch secrets from
 	FolderID string `json:"folderId"`
 }
 
@@ -48,11 +48,11 @@ type YandexLockboxProvider struct {
 	// +optional
 	CAProvider *YandexLockboxCAProvider `json:"caProvider,omitempty"`
 
-	// FetchByID interprets key as ID in ExternalSecret
+	// FetchByID configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as secret ID
 	// +optional
 	FetchByID *FetchByID `json:"fetchByID,omitempty"`
 
-	// FetchByName interprets key as name in ExternalSecret
+	// FetchByName configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as secret name
 	// +optional
 	FetchByName *FetchByName `json:"fetchByName,omitempty"`
 }
