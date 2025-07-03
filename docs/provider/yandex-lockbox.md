@@ -82,14 +82,8 @@ spec:
   data:
   - secretKey: password # the target k8s secret key
     remoteRef:
-      # If fetching secrets by ID is enabled:
-      key: ***** # the ID of lockbox-secret
+      key: ***** # either ID or name of the secret, depending on FetchByID / FetchByName
       property: password # (optional) payload entry key of lockbox-secret
-
-      # If fetching secrets by name is enabled:
-      #
-      # key: lockbox-secret # the name of lockbox-secret, i.e. just "lockbox-secret"
-      # property: password # (optional) payload entry key of lockbox-secret
 ```
 
 The operator will fetch the Yandex Lockbox secret and inject it as a `Kind=Secret`
