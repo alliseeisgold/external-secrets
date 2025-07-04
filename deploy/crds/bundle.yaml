@@ -6133,6 +6133,18 @@ spec:
                                   type: string
                               type: object
                           type: object
+                        fetchByID:
+                          description: FetchByID configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as certificate ID
+                          type: object
+                        fetchByName:
+                          description: FetchByName configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as certificate name
+                          properties:
+                            folderID:
+                              description: The folder to fetch secrets from
+                              type: string
+                          required:
+                            - folderID
+                          type: object
                       required:
                         - auth
                       type: object
@@ -6203,6 +6215,18 @@ spec:
                                   pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                                   type: string
                               type: object
+                          type: object
+                        fetchByID:
+                          description: FetchByID configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as secret ID
+                          type: object
+                        fetchByName:
+                          description: FetchByName configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as secret name
+                          properties:
+                            folderID:
+                              description: The folder to fetch secrets from
+                              type: string
+                          required:
+                            - folderID
                           type: object
                       required:
                         - auth
@@ -16283,6 +16307,18 @@ spec:
                                   type: string
                               type: object
                           type: object
+                        fetchByID:
+                          description: FetchByID configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as certificate ID
+                          type: object
+                        fetchByName:
+                          description: FetchByName configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as certificate name
+                          properties:
+                            folderID:
+                              description: The folder to fetch secrets from
+                              type: string
+                          required:
+                            - folderID
+                          type: object
                       required:
                         - auth
                       type: object
@@ -16353,6 +16389,18 @@ spec:
                                   pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                                   type: string
                               type: object
+                          type: object
+                        fetchByID:
+                          description: FetchByID configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as secret ID
+                          type: object
+                        fetchByName:
+                          description: FetchByName configures the provider to interpret the `data.secretKey.remoteRef.key` field in ExternalSecret as secret name
+                          properties:
+                            folderID:
+                              description: The folder to fetch secrets from
+                              type: string
+                          required:
+                            - folderID
                           type: object
                       required:
                         - auth

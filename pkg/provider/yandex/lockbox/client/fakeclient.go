@@ -42,6 +42,10 @@ func (c *fakeLockboxClient) GetPayloadEntries(_ context.Context, iamToken, secre
 	return c.fakeLockboxServer.getEntries(iamToken, secretID, versionID)
 }
 
+func (c *fakeLockboxClient) GetExPayload(_ context.Context, iamToken, folderID, name, versionID string) (map[string][]byte, error) {
+	return c.fakeLockboxServer.getExPayload(iamToken, folderID, name, versionID)
+}
+
 // Fakes Yandex Lockbox service backend.
 type FakeLockboxServer struct {
 	secretMap  map[secretKey]secretValue   // secret specific data
@@ -134,4 +138,9 @@ func (s *FakeLockboxServer) getEntries(iamToken, secretID, versionID string) ([]
 	}
 
 	return s.versionMap[versionKey{secretID, versionID}].entries, nil
+}
+
+func (s *FakeLockboxServer) getExPayload(iamToken, folderId, name, versionID string) (map[string][]byte, error) {
+	// TODO: implement
+	return nil, nil
 }
