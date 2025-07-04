@@ -4636,7 +4636,7 @@ string
 <tbody>
 <tr>
 <td>
-<code>folderId</code></br>
+<code>folderID</code></br>
 <em>
 string
 </em>
@@ -10413,8 +10413,7 @@ FetchByID
 </td>
 <td>
 <em>(Optional)</em>
-<p>FetchByID enables fetching secrets by ID.
-The values in ExternalSecret <code>data.secretKey.remoteRef.key</code> field will be interpreted as IDs</p>
+<p>FetchByID configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as certificate ID</p>
 </td>
 </tr>
 <tr>
@@ -10428,8 +10427,7 @@ FetchByName
 </td>
 <td>
 <em>(Optional)</em>
-<p>FetchByName enables fetching secrets by name.
-The values in ExternalSecret <code>data.secretKey.remoteRef.key</code> field will be interpreted as name</p>
+<p>FetchByName configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as certificate name</p>
 </td>
 </tr>
 </tbody>
