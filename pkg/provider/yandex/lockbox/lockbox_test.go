@@ -700,7 +700,38 @@ func TestGetSecretByFolderAndNameAndVersionID(t *testing.T) {
 	tassert.Equal(t, map[string]string{newKey: textEntryBase64(newVal)}, unmarshalStringMap(t, data))
 }
 
-func TestGetSecretByFetchID(t *testing.T) {
+func TestGetSecretByFolderAndNameNotFound(t *testing.T) {
+	ctx := context.Background()
+	namespace := uuid.NewString()
+	authorizedKey := newFakeAuthorizedKey()
+
+	fakeClock := clock.NewFakeClock()
+	fakeLockboxServer := client.NewFakeLockboxServer(fakeClock, time.Hour)
+	folderId := uuid.NewString()
+	k8sClient := clientfake.NewClientBuilder().Build()
+	const authorizedKeySecretName = "authorizedKeySecretName"
+	const authorizedKeySecretKey = "authorizedKeySecretKey"
+	err := createK8sSecret(ctx, t, k8sClient, namespace, authorizedKeySecretName, authorizedKeySecretKey, toJSON(t, authorizedKey))
+	tassert.Nil(t, err)
+	store := newYandexLockboxSecretStoreWithFetchByName("", namespace, authorizedKeySecretName, authorizedKeySecretKey, folderId)
+
+	provider := newLockboxProvider(fakeClock, fakeLockboxServer)
+	secretsClient, err := provider.NewClient(ctx, store, k8sClient, namespace)
+	tassert.Nil(t, err)
+
+	_, err = secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: "no-secret-with-such-name"})
+	tassert.EqualError(t, err, "unable to request secret payload to getEx secret: secret not found")
+	secretName := "secretName"
+	_, _ = fakeLockboxServer.CreateSecret(
+		authorizedKey,
+		folderId, secretName,
+		textEntry("k1", "v1"),
+	)
+	_, err = secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretName, Version: "no-version-with-such-id"})
+	tassert.EqualError(t, err, "unable to request secret payload to getEx secret: version not found")
+}
+
+func TestGetSecretWithFetchByID(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -733,7 +764,7 @@ func TestGetSecretByFetchID(t *testing.T) {
 	tassert.Equal(t, expected, unmarshalStringMap(t, data))
 }
 
-func TestGetSecretWithBothFetchIDAndName(t *testing.T) {
+func TestGetSecretWithBothFetchByIDAndFetchByName(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()

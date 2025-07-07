@@ -165,7 +165,7 @@ func (s *FakeLockboxServer) getEntries(iamToken, secretID, versionID string) ([]
 func (s *FakeLockboxServer) getExPayload(iamToken, folderID, name, versionID string) (map[string][]byte, error) {
 	fv, ok := s.folderMap[folderKey{folderID, name, versionID}]
 	if !ok {
-		if _, ok2 := s.folderMap[folderKey{folderID, name, ""}]; !ok2 {
+		if _, ok2 := s.folderMap[folderKey{folderID, name, ""}]; ok2 {
 			return nil, errors.New("version not found")
 		}
 		return nil, errors.New("secret not found")
