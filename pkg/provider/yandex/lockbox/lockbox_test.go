@@ -630,7 +630,8 @@ func TestGetSecretByFolderAndName(t *testing.T) {
 	secretName := "secretName"
 	k1, v1 := "k1", "v1"
 	k2, v2 := "k2", []byte("v2")
-	secretID, _ := fakeLockboxServer.CreateSecret(authorizedKey,
+	_, _ = fakeLockboxServer.CreateSecret(
+		authorizedKey,
 		folderId, secretName,
 		textEntry(k1, v1),
 		binaryEntry(k2, v2),
@@ -642,9 +643,11 @@ func TestGetSecretByFolderAndName(t *testing.T) {
 	err := createK8sSecret(ctx, t, k8sClient, namespace, authorizedKeySecretName, authorizedKeySecretKey, toJSON(t, authorizedKey))
 	tassert.Nil(t, err)
 	store := newYandexLockboxSecretStoreWithFetchByName("", namespace, authorizedKeySecretName, authorizedKeySecretKey, folderId)
+
 	provider := newLockboxProvider(fakeClock, fakeLockboxServer)
 	secretsClient, err := provider.NewClient(ctx, store, k8sClient, namespace)
 	tassert.Nil(t, err)
+
 	data, err := secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretName})
 	tassert.Nil(t, err)
 	expected := map[string]string{
@@ -652,7 +655,6 @@ func TestGetSecretByFolderAndName(t *testing.T) {
 		k2: base64(v2),
 	}
 	tassert.Equal(t, expected, unmarshalStringMap(t, data))
-	tassert.Equal(t, secretID, secretID) // need to remove this the final PR
 }
 
 func TestGetSecretByFolderAndNameAndVersionID(t *testing.T) {
@@ -729,7 +731,6 @@ func TestGetSecretByFetchID(t *testing.T) {
 		k2: base64(v2),
 	}
 	tassert.Equal(t, expected, unmarshalStringMap(t, data))
-	tassert.Equal(t, secretID, secretID) // need to remove this the final PR
 }
 
 func TestGetSecretWithBothFetchIDAndName(t *testing.T) {
