@@ -235,7 +235,7 @@ func TestGetSecretByVersionID(t *testing.T) {
 	tassert.Equal(t, map[string]string{oldKey: oldVal}, unmarshalStringMap(t, data))
 
 	newKey, newVal := "newKey", "newVal"
-	newVersionID := fakeLockboxServer.AddVersion(secretID, "", "",
+	newVersionID := fakeLockboxServer.AddVersion(secretID, "folderId", "secretName",
 		textEntry(newKey, newVal),
 	)
 
@@ -606,7 +606,7 @@ func TestGetSecretMapByVersionID(t *testing.T) {
 	tassert.Equal(t, map[string][]byte{oldKey: []byte(oldVal)}, data)
 
 	newKey, newVal := "newKey", "newVal"
-	newVersionID := fakeLockboxServer.AddVersion(secretID, "", "",
+	newVersionID := fakeLockboxServer.AddVersion(secretID, "folderId", "secretName",
 		textEntry(newKey, newVal),
 	)
 
