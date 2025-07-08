@@ -235,9 +235,7 @@ func TestGetSecretByVersionID(t *testing.T) {
 	tassert.Equal(t, map[string]string{oldKey: oldVal}, unmarshalStringMap(t, data))
 
 	newKey, newVal := "newKey", "newVal"
-	newVersionID := fakeLockboxServer.AddVersion(secretID, "folderId", "secretName",
-		textEntry(newKey, newVal),
-	)
+	newVersionID := fakeLockboxServer.AddVersion(secretID, textEntry(newKey, newVal))
 
 	data, err = secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretID, Version: oldVersionID})
 	tassert.Nil(t, err)
@@ -606,9 +604,7 @@ func TestGetSecretMapByVersionID(t *testing.T) {
 	tassert.Equal(t, map[string][]byte{oldKey: []byte(oldVal)}, data)
 
 	newKey, newVal := "newKey", "newVal"
-	newVersionID := fakeLockboxServer.AddVersion(secretID, "folderId", "secretName",
-		textEntry(newKey, newVal),
-	)
+	newVersionID := fakeLockboxServer.AddVersion(secretID, textEntry(newKey, newVal))
 
 	data, err = secretsClient.GetSecretMap(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretID, Version: oldVersionID})
 	tassert.Nil(t, err)
@@ -687,9 +683,7 @@ func TestGetSecretyWithFetchByNameAndVersionID(t *testing.T) {
 	tassert.Equal(t, map[string]string{oldKey: base64([]byte(oldVal))}, unmarshalStringMap(t, data))
 
 	newKey, newVal := "newKey", "newVal"
-	newVersionID := fakeLockboxServer.AddVersion(secretID, folderId, secretName,
-		textEntry(newKey, newVal),
-	)
+	newVersionID := fakeLockboxServer.AddVersion(secretID, textEntry(newKey, newVal))
 
 	data, err = secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretName, Version: oldVersionID})
 	tassert.Nil(t, err)

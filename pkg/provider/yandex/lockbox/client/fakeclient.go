@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -66,14 +67,12 @@ type secretValue struct {
 }
 
 type folderKey struct {
-	folderID  string
-	name      string
-	versionID string
+	folderID string
+	name     string
 }
 
 type folderValue struct {
 	secret secretKey
-	value  versionValue
 }
 
 type versionKey struct {
@@ -113,26 +112,21 @@ func (s *FakeLockboxServer) CreateSecret(authorizedKey *iamkey.Key, folderID str
 	s.versionMap[versionKey{secretID, ""}] = versionValue{entries} // empty versionID corresponds to the latest version
 	s.versionMap[versionKey{secretID, versionID}] = versionValue{entries}
 
-	if _, exists := s.folderAndNameMap[folderKey{folderID, name, ""}]; !exists {
-		folderValue := folderValue{secretKey{secretID}, versionValue{entries}}
-		s.folderAndNameMap[folderKey{folderID, name, ""}] = folderValue // empty versionID corresponds to the latest version
-		s.folderAndNameMap[folderKey{folderID, name, versionID}] = folderValue
+	if _, exists := s.folderAndNameMap[folderKey{folderID, name}]; exists {
+		fmt.Println("ERROR: On the fake server, you cannot add two certificates with the same name in the same folder.")
 	}
+
+	s.folderAndNameMap[folderKey{folderID, name}] = folderValue{secretKey{secretID}}
 
 	return secretID, versionID
 }
 
-func (s *FakeLockboxServer) AddVersion(secretID, folderID, name string, entries ...*api.Payload_Entry) string {
+func (s *FakeLockboxServer) AddVersion(secretID string, entries ...*api.Payload_Entry) string {
 	versionID := uuid.NewString()
 
 	s.versionMap[versionKey{secretID, ""}] = versionValue{entries} // empty versionID corresponds to the latest version
 	s.versionMap[versionKey{secretID, versionID}] = versionValue{entries}
 
-	if currentFolderValue := s.folderAndNameMap[folderKey{folderID, name, ""}]; currentFolderValue.secret.secretID == secretID {
-		folderValue := folderValue{secretKey{secretID}, versionValue{entries}}
-		s.folderAndNameMap[folderKey{folderID, name, ""}] = folderValue // empty versionID corresponds to the latest version
-		s.folderAndNameMap[folderKey{folderID, name, versionID}] = folderValue
-	}
 	return versionID
 }
 
@@ -165,22 +159,24 @@ func (s *FakeLockboxServer) getEntries(iamToken, secretID, versionID string) ([]
 }
 
 func (s *FakeLockboxServer) getExPayload(iamToken, folderID, name, versionID string) (map[string][]byte, error) {
-	fv, _ := s.folderAndNameMap[folderKey{folderID, name, versionID}]
-	if _, ok := s.folderAndNameMap[folderKey{folderID, name, ""}]; !ok {
+	if _, ok := s.folderAndNameMap[folderKey{folderID, name}]; !ok {
 		return nil, errors.New("secret not found")
 	}
-	if _, ok := s.folderAndNameMap[folderKey{folderID, name, versionID}]; !ok {
+	fv := s.folderAndNameMap[folderKey{folderID, name}]
+	secretID := fv.secret.secretID
+	if _, ok := s.versionMap[versionKey{secretID, versionID}]; !ok {
 		return nil, errors.New("version not found")
 	}
 
 	if s.tokenMap[tokenKey{iamToken}].expiresAt.Before(s.clock.CurrentTime()) {
 		return nil, errors.New("iam token expired")
 	}
-	if !cmp.Equal(s.tokenMap[tokenKey{iamToken}].authorizedKey, s.secretMap[secretKey{fv.secret.secretID}].expectedAuthorizedKey, cmpopts.IgnoreUnexported(iamkey.Key{})) {
+	if !cmp.Equal(s.tokenMap[tokenKey{iamToken}].authorizedKey, s.secretMap[secretKey{secretID}].expectedAuthorizedKey, cmpopts.IgnoreUnexported(iamkey.Key{})) {
 		return nil, errors.New("permission denied")
 	}
-	out := make(map[string][]byte, len(fv.value.entries))
-	for _, e := range fv.value.entries {
+	entries := s.versionMap[versionKey{secretID, versionID}].entries
+	out := make(map[string][]byte, len(entries))
+	for _, e := range entries {
 		switch e.Value.(type) {
 		case *api.Payload_Entry_TextValue:
 			out[e.Key] = []byte(e.GetTextValue())
