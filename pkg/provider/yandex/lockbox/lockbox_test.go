@@ -619,7 +619,7 @@ func TestGetSecretMapByVersionID(t *testing.T) {
 	tassert.Equal(t, map[string][]byte{newKey: []byte(newVal)}, data)
 }
 
-func TestGetSecretByNameForAllEntries(t *testing.T) {
+func TestGetSecretWithFetchByNameForAllEntries(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -657,7 +657,7 @@ func TestGetSecretByNameForAllEntries(t *testing.T) {
 	tassert.Equal(t, expected, unmarshalStringMap(t, data))
 }
 
-func TestGetSecretyByNameAndVersionID(t *testing.T) {
+func TestGetSecretyWithFetchByNameAndVersionID(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -700,7 +700,7 @@ func TestGetSecretyByNameAndVersionID(t *testing.T) {
 	tassert.Equal(t, map[string]string{newKey: base64([]byte(newVal))}, unmarshalStringMap(t, data))
 }
 
-func TestGetSecretByNameForTextEntry(t *testing.T) {
+func TestGetSecretWithFetchByNameForTextEntry(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -732,7 +732,7 @@ func TestGetSecretByNameForTextEntry(t *testing.T) {
 	tassert.Equal(t, v1, string(data))
 }
 
-func TestGetSecretByNameForBinaryEntry(t *testing.T) {
+func TestGetSecretWithFetchByNameForBinaryEntry(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -764,7 +764,7 @@ func TestGetSecretByNameForBinaryEntry(t *testing.T) {
 	tassert.Equal(t, v2, data)
 }
 
-func TestGetSecretByNameNotFound(t *testing.T) {
+func TestGetSecretWithFetchByNameNotFound(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -795,7 +795,7 @@ func TestGetSecretByNameNotFound(t *testing.T) {
 	tassert.EqualError(t, err, "unable to request secret payload to getEx secret: version not found")
 }
 
-func TestGetSecretByNameUnauthorized(t *testing.T) {
+func TestGetSecretWithFetchByNameUnauthorized(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKeyA := newFakeAuthorizedKey()
@@ -824,7 +824,7 @@ func TestGetSecretByNameUnauthorized(t *testing.T) {
 	tassert.EqualError(t, err, "unable to request secret payload to getEx secret: permission denied")
 }
 
-func TestGetSecretByNameWithoutFolderID(t *testing.T) {
+func TestGetSecretWithFetchByNameWithoutFolderID(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
