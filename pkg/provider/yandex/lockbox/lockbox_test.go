@@ -824,6 +824,26 @@ func TestGetSecretByNameUnauthorized(t *testing.T) {
 	tassert.EqualError(t, err, "unable to request secret payload to getEx secret: permission denied")
 }
 
+func TestGetSecretByNameWithoutFolderID(t *testing.T) {
+	ctx := context.Background()
+	namespace := uuid.NewString()
+	authorizedKey := newFakeAuthorizedKey()
+
+	fakeClock := clock.NewFakeClock()
+	fakeLockboxServer := client.NewFakeLockboxServer(fakeClock, time.Hour)
+
+	k8sClient := clientfake.NewClientBuilder().Build()
+	const authorizedKeySecretName = "authorizedKeySecretName"
+	const authorizedKeySecretKey = "authorizedKeySecretKey"
+	err := createK8sSecret(ctx, t, k8sClient, namespace, authorizedKeySecretName, authorizedKeySecretKey, toJSON(t, authorizedKey))
+	tassert.Nil(t, err)
+	store := newYandexLockboxSecretStoreWithFetchByName("", namespace, authorizedKeySecretName, authorizedKeySecretKey, "")
+
+	provider := newLockboxProvider(fakeClock, fakeLockboxServer)
+	_, err = provider.NewClient(ctx, store, k8sClient, namespace)
+	tassert.EqualError(t, err, "folderID is required when FetchByName is set")
+}
+
 func TestGetSecretWithFetchByIDForAllEntries(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
@@ -955,7 +975,7 @@ func TestGetSecretWithBothFetchByIDAndFetchByName(t *testing.T) {
 	tassert.EqualError(
 		t,
 		err,
-		"invalid Yandex Lockbox SecretStore resource: both fetchByID and fetchByName are set",
+		"invalid Yandex Lockbox SecretStore resource: both FetchByID and FetchByName are set",
 	)
 }
 
