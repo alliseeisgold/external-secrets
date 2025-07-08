@@ -651,7 +651,7 @@ func TestGetSecretByNameForAllEntries(t *testing.T) {
 	data, err := secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretName})
 	tassert.Nil(t, err)
 	expected := map[string]string{
-		k1: textEntryBase64(v1),
+		k1: base64([]byte(v1)),
 		k2: base64(v2),
 	}
 	tassert.Equal(t, expected, unmarshalStringMap(t, data))
@@ -684,7 +684,7 @@ func TestGetSecretyByNameAndVersionID(t *testing.T) {
 	data, err := secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretName, Version: oldVersionID})
 	tassert.Nil(t, err)
 
-	tassert.Equal(t, map[string]string{oldKey: textEntryBase64(oldVal)}, unmarshalStringMap(t, data))
+	tassert.Equal(t, map[string]string{oldKey: base64([]byte(oldVal))}, unmarshalStringMap(t, data))
 
 	newKey, newVal := "newKey", "newVal"
 	newVersionID := fakeLockboxServer.AddVersion(secretID, folderId, secretName,
@@ -693,11 +693,11 @@ func TestGetSecretyByNameAndVersionID(t *testing.T) {
 
 	data, err = secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretName, Version: oldVersionID})
 	tassert.Nil(t, err)
-	tassert.Equal(t, map[string]string{oldKey: textEntryBase64(oldVal)}, unmarshalStringMap(t, data))
+	tassert.Equal(t, map[string]string{oldKey: base64([]byte(oldVal))}, unmarshalStringMap(t, data))
 
 	data, err = secretsClient.GetSecret(ctx, esv1.ExternalSecretDataRemoteRef{Key: secretName, Version: newVersionID})
 	tassert.Nil(t, err)
-	tassert.Equal(t, map[string]string{newKey: textEntryBase64(newVal)}, unmarshalStringMap(t, data))
+	tassert.Equal(t, map[string]string{newKey: base64([]byte(newVal))}, unmarshalStringMap(t, data))
 }
 
 func TestGetSecretByNameForTextEntry(t *testing.T) {
@@ -1108,10 +1108,6 @@ func binaryEntry(key string, value []byte) *lockbox.Payload_Entry {
 			BinaryValue: value,
 		},
 	}
-}
-
-func textEntryBase64(value string) string {
-	return base64([]byte(value))
 }
 
 func unmarshalStringMap(t *testing.T, data []byte) map[string]string {
