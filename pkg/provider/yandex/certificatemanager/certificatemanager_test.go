@@ -904,6 +904,24 @@ func TestGetSecretByNameNotFound(t *testing.T) {
 	tassert.EqualError(t, err, "unable to request certificate content to getEx secret: version not found")
 }
 
+func TestGetSecretByNameWithoutFolderID(t *testing.T) {
+	ctx := context.Background()
+	namespace := uuid.NewString()
+	authorizedKey := newFakeAuthorizedKey()
+
+	fakeClock := clock.NewFakeClock()
+	fakeCertificateManagerServer := client.NewFakeCertificateManagerServer(fakeClock, time.Hour)
+	k8sClient := clientfake.NewClientBuilder().Build()
+	const authorizedKeySecretName = "authorizedKeySecretName"
+	const authorizedKeySecretKey = "authorizedKeySecretKey"
+	err := createK8sSecret(ctx, t, k8sClient, namespace, authorizedKeySecretName, authorizedKeySecretKey, toJSON(t, authorizedKey))
+	tassert.Nil(t, err)
+	store := newYandexCertificateManagerSecretStoreWithFetchByName("", namespace, authorizedKeySecretName, authorizedKeySecretKey, "")
+	provider := newCertificateManagerProvider(fakeClock, fakeCertificateManagerServer)
+	_, err = provider.NewClient(ctx, store, k8sClient, namespace)
+	tassert.EqualError(t, err, "folderID is required when FetchByName is set")
+}
+
 func TestGetSecretWithFetchByIDWithoutProperty(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
