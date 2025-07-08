@@ -48,14 +48,14 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	}
 
 	if storeSpecYandexCertificateManager.FetchByID != nil && storeSpecYandexCertificateManager.FetchByName != nil {
-		return nil, errors.New("invalid Yandex Lockbox SecretStore resource: both fetchByID and fetchByName are set")
+		return nil, errors.New("invalid Yandex Certificate Manager SecretStore resource: both FetchByID and FetchByName are set")
 	}
 
 	var resourceKeyType common.ResourceKeyType
 	var folderID string
 	if storeSpecYandexCertificateManager.FetchByName != nil {
 		if storeSpecYandexCertificateManager.FetchByName.FolderID == "" {
-			return nil, errors.New("folderId is required when fetchByName is true")
+			return nil, errors.New("folderID is required when FetchByName is set")
 		}
 		resourceKeyType = common.ResourceKeyTypeName
 		folderID = storeSpecYandexCertificateManager.FetchByName.FolderID
