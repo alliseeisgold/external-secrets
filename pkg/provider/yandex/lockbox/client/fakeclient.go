@@ -112,11 +112,10 @@ func (s *FakeLockboxServer) CreateSecret(authorizedKey *iamkey.Key, folderID str
 	s.secretMap[secretKey{secretID}] = secretValue{authorizedKey}
 	s.versionMap[versionKey{secretID, ""}] = versionValue{entries} // empty versionID corresponds to the latest version
 	s.versionMap[versionKey{secretID, versionID}] = versionValue{entries}
-	if folderID != "" && name != "" {
-		folderValue := folderValue{secretKey{secretID}, entries}
-		s.folderMap[folderKey{folderID, name, ""}] = folderValue // empty versionID corresponds to the latest version
-		s.folderMap[folderKey{folderID, name, versionID}] = folderValue
-	}
+	folderValue := folderValue{secretKey{secretID}, entries}
+	s.folderMap[folderKey{folderID, name, ""}] = folderValue // empty versionID corresponds to the latest version
+	s.folderMap[folderKey{folderID, name, versionID}] = folderValue
+
 	return secretID, versionID
 }
 
@@ -126,11 +125,10 @@ func (s *FakeLockboxServer) AddVersion(secretID, folderID, name string, entries 
 	s.versionMap[versionKey{secretID, ""}] = versionValue{entries} // empty versionID corresponds to the latest version
 	s.versionMap[versionKey{secretID, versionID}] = versionValue{entries}
 
-	if folderID != "" && name != "" {
-		folderValue := folderValue{secretKey{secretID}, entries}
-		s.folderMap[folderKey{folderID, name, ""}] = folderValue // empty versionID corresponds to the latest version
-		s.folderMap[folderKey{folderID, name, versionID}] = folderValue
-	}
+	folderValue := folderValue{secretKey{secretID}, entries}
+	s.folderMap[folderKey{folderID, name, ""}] = folderValue // empty versionID corresponds to the latest version
+	s.folderMap[folderKey{folderID, name, versionID}] = folderValue
+
 	return versionID
 }
 
