@@ -619,7 +619,7 @@ func TestGetSecretMapByVersionID(t *testing.T) {
 	tassert.Equal(t, map[string][]byte{newKey: []byte(newVal)}, data)
 }
 
-func TestGetSecretByFolderAndName(t *testing.T) {
+func TestGetSecretByNameForAllEntries(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -657,7 +657,7 @@ func TestGetSecretByFolderAndName(t *testing.T) {
 	tassert.Equal(t, expected, unmarshalStringMap(t, data))
 }
 
-func TestGetSecretByFolderAndNameAndVersionID(t *testing.T) {
+func TestGetSecretyByNameAndVersionID(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -700,7 +700,7 @@ func TestGetSecretByFolderAndNameAndVersionID(t *testing.T) {
 	tassert.Equal(t, map[string]string{newKey: textEntryBase64(newVal)}, unmarshalStringMap(t, data))
 }
 
-func TestGetSecretByFolderAndNameNotFound(t *testing.T) {
+func TestGetSecretByNameNotFound(t *testing.T) {
 	ctx := context.Background()
 	namespace := uuid.NewString()
 	authorizedKey := newFakeAuthorizedKey()
@@ -741,7 +741,7 @@ func TestGetSecretWithFetchByID(t *testing.T) {
 	k1, v1 := "k1", "v1"
 	k2, v2 := "k2", []byte("v2")
 	secretID, _ := fakeLockboxServer.CreateSecret(authorizedKey,
-		"", "",
+		"folderId", "secret",
 		textEntry(k1, v1),
 		binaryEntry(k2, v2),
 	)
