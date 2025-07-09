@@ -49,10 +49,10 @@ func (c *fakeLockboxClient) GetExPayload(_ context.Context, iamToken, folderID, 
 
 // Fakes Yandex Lockbox service backend.
 type FakeLockboxServer struct {
-	secretMap        map[secretKey]secretValue   // secret specific data
-	versionMap       map[versionKey]versionValue // version specific data
-	tokenMap         map[tokenKey]tokenValue     // token specific data
-	folderAndNameMap map[folderKey]folderValue   // folder specific data
+	secretMap        map[secretKey]secretValue               // secret specific data
+	versionMap       map[versionKey]versionValue             // version specific data
+	tokenMap         map[tokenKey]tokenValue                 // token specific data
+	folderAndNameMap map[folderAndNameKey]folderAndNameValue // folderAndName specific data
 
 	tokenExpirationDuration time.Duration
 	clock                   clock.Clock
@@ -66,15 +66,6 @@ type secretValue struct {
 	expectedAuthorizedKey *iamkey.Key // authorized key expected to access the secret
 }
 
-type folderKey struct {
-	folderID string
-	name     string
-}
-
-type folderValue struct {
-	secret secretKey
-}
-
 type versionKey struct {
 	secretID  string
 	versionID string
@@ -82,6 +73,15 @@ type versionKey struct {
 
 type versionValue struct {
 	entries []*api.Payload_Entry
+}
+
+type folderAndNameKey struct {
+	folderID string
+	name     string
+}
+
+type folderAndNameValue struct {
+	secretID string
 }
 
 type tokenKey struct {
@@ -98,7 +98,7 @@ func NewFakeLockboxServer(clock clock.Clock, tokenExpirationDuration time.Durati
 		secretMap:               make(map[secretKey]secretValue),
 		versionMap:              make(map[versionKey]versionValue),
 		tokenMap:                make(map[tokenKey]tokenValue),
-		folderAndNameMap:        make(map[folderKey]folderValue),
+		folderAndNameMap:        make(map[folderAndNameKey]folderAndNameValue),
 		tokenExpirationDuration: tokenExpirationDuration,
 		clock:                   clock,
 	}
@@ -112,11 +112,11 @@ func (s *FakeLockboxServer) CreateSecret(authorizedKey *iamkey.Key, folderID str
 	s.versionMap[versionKey{secretID, ""}] = versionValue{entries} // empty versionID corresponds to the latest version
 	s.versionMap[versionKey{secretID, versionID}] = versionValue{entries}
 
-	if _, exists := s.folderAndNameMap[folderKey{folderID, name}]; exists {
+	if _, exists := s.folderAndNameMap[folderAndNameKey{folderID, name}]; exists {
 		fmt.Println("ERROR: On the fake server, you cannot add two certificates with the same name in the same folder.")
 	}
 
-	s.folderAndNameMap[folderKey{folderID, name}] = folderValue{secretKey{secretID}}
+	s.folderAndNameMap[folderAndNameKey{folderID, name}] = folderAndNameValue{secretID}
 
 	return secretID, versionID
 }
@@ -159,11 +159,10 @@ func (s *FakeLockboxServer) getEntries(iamToken, secretID, versionID string) ([]
 }
 
 func (s *FakeLockboxServer) getExPayload(iamToken, folderID, name, versionID string) (map[string][]byte, error) {
-	if _, ok := s.folderAndNameMap[folderKey{folderID, name}]; !ok {
+	if _, ok := s.folderAndNameMap[folderAndNameKey{folderID, name}]; !ok {
 		return nil, errors.New("secret not found")
 	}
-	fv := s.folderAndNameMap[folderKey{folderID, name}]
-	secretID := fv.secret.secretID
+	secretID := s.folderAndNameMap[folderAndNameKey{folderID, name}].secretID
 	if _, ok := s.versionMap[versionKey{secretID, versionID}]; !ok {
 		return nil, errors.New("version not found")
 	}
