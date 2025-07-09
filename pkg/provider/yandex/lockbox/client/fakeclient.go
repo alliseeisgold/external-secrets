@@ -104,7 +104,7 @@ func NewFakeLockboxServer(clock clock.Clock, tokenExpirationDuration time.Durati
 	}
 }
 
-func (s *FakeLockboxServer) CreateSecret(authorizedKey *iamkey.Key, folderID string, name string, entries ...*api.Payload_Entry) (string, string) {
+func (s *FakeLockboxServer) CreateSecret(authorizedKey *iamkey.Key, folderID, name string, entries ...*api.Payload_Entry) (string, string) {
 	secretID := uuid.NewString()
 	versionID := uuid.NewString()
 
