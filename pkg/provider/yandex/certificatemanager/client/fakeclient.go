@@ -49,10 +49,10 @@ func (c *fakeCertificateManagerClient) GetExCertificateContent(_ context.Context
 
 // Fakes Yandex Certificate Manager service backend.
 type FakeCertificateManagerServer struct {
-	certificateMap   map[certificateKey]certificateValue // certificate specific data
-	versionMap       map[versionKey]versionValue         // version specific data
-	tokenMap         map[tokenKey]tokenValue             // token specific data
-	folderAndNameMap map[folderKey]folderValue           // folder specific data
+	certificateMap   map[certificateKey]certificateValue     // certificate specific data
+	versionMap       map[versionKey]versionValue             // version specific data
+	tokenMap         map[tokenKey]tokenValue                 // token specific data
+	folderAndNameMap map[folderAndNameKey]folderAndNameValue // folderAndName specific data
 
 	tokenExpirationDuration time.Duration
 	clock                   clock.Clock
@@ -84,13 +84,13 @@ type tokenValue struct {
 	expiresAt     time.Time
 }
 
-type folderKey struct {
+type folderAndNameKey struct {
 	folderID string
 	name     string
 }
 
-type folderValue struct {
-	certificate certificateKey
+type folderAndNameValue struct {
+	certificateID string
 }
 
 func NewFakeCertificateManagerServer(clock clock.Clock, tokenExpirationDuration time.Duration) *FakeCertificateManagerServer {
@@ -98,7 +98,7 @@ func NewFakeCertificateManagerServer(clock clock.Clock, tokenExpirationDuration 
 		certificateMap:          make(map[certificateKey]certificateValue),
 		versionMap:              make(map[versionKey]versionValue),
 		tokenMap:                make(map[tokenKey]tokenValue),
-		folderAndNameMap:        make(map[folderKey]folderValue),
+		folderAndNameMap:        make(map[folderAndNameKey]folderAndNameValue),
 		tokenExpirationDuration: tokenExpirationDuration,
 		clock:                   clock,
 	}
@@ -112,11 +112,11 @@ func (s *FakeCertificateManagerServer) CreateCertificate(authorizedKey *iamkey.K
 	s.versionMap[versionKey{certificateID, ""}] = versionValue{content} // empty versionID corresponds to the latest version
 	s.versionMap[versionKey{certificateID, versionID}] = versionValue{content}
 
-	if _, exists := s.folderAndNameMap[folderKey{folderID, name}]; exists {
+	if _, exists := s.folderAndNameMap[folderAndNameKey{folderID, name}]; exists {
 		fmt.Println("ERROR: On the fake server, you cannot add two certificates with the same name in the same folder.")
 	}
 
-	s.folderAndNameMap[folderKey{folderID, name}] = folderValue{certificateKey{certificateID}}
+	s.folderAndNameMap[folderAndNameKey{folderID, name}] = folderAndNameValue{certificateID}
 
 	return certificateID, versionID
 }
@@ -159,11 +159,10 @@ func (s *FakeCertificateManagerServer) getCertificateContent(iamToken, certifica
 }
 
 func (s *FakeCertificateManagerServer) getExCertificateContent(iamToken, folderID, name, versionID string) (*api.GetExCertificateContentResponse, error) {
-	if _, ok := s.folderAndNameMap[folderKey{folderID, name}]; !ok {
+	if _, ok := s.folderAndNameMap[folderAndNameKey{folderID, name}]; !ok {
 		return nil, errors.New("certificate not found")
 	}
-	fv := s.folderAndNameMap[folderKey{folderID, name}]
-	certificateID := fv.certificate.certificateID
+	certificateID := s.folderAndNameMap[folderAndNameKey{folderID, name}].certificateID
 	if _, ok := s.versionMap[versionKey{certificateID, versionID}]; !ok {
 		return nil, errors.New("version not found")
 	}
@@ -174,7 +173,7 @@ func (s *FakeCertificateManagerServer) getExCertificateContent(iamToken, folderI
 		return nil, errors.New("iam token expired")
 	}
 
-	if !cmp.Equal(s.tokenMap[tokenKey{iamToken}].authorizedKey, s.certificateMap[fv.certificate].expectedAuthorizedKey, cmpopts.IgnoreUnexported(iamkey.Key{})) {
+	if !cmp.Equal(s.tokenMap[tokenKey{iamToken}].authorizedKey, s.certificateMap[certificateKey{certificateID}].expectedAuthorizedKey, cmpopts.IgnoreUnexported(iamkey.Key{})) {
 		return nil, errors.New("permission denied")
 	}
 	certificateChain := s.versionMap[versionKey{certificateID, versionID}].content.CertificateChain
