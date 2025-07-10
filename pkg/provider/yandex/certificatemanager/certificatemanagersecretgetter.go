@@ -42,9 +42,9 @@ func newCertificateManagerSecretGetter(certificateManagerClient client.Certifica
 }
 
 func (g *certificateManagerSecretGetter) GetSecret(ctx context.Context, iamToken, resourceID string, resourceKeyType common.ResourceKeyType, folderID, versionID, property string) ([]byte, error) {
-	response, err := g.GetCertificateResponse(ctx, iamToken, resourceID, resourceKeyType, folderID, versionID)
+	response, err := g.fetchCertificateContentResponse(ctx, iamToken, resourceID, resourceKeyType, folderID, versionID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to request certificate content to get secret: %w", err)
 	}
 	chain := trimAndJoin(response.CertificateChain...)
 	privateKey := trimAndJoin(response.PrivateKey)
@@ -62,9 +62,9 @@ func (g *certificateManagerSecretGetter) GetSecret(ctx context.Context, iamToken
 }
 
 func (g *certificateManagerSecretGetter) GetSecretMap(ctx context.Context, iamToken, resourceID string, resourceKeyType common.ResourceKeyType, folderID, versionID string) (map[string][]byte, error) {
-	response, err := g.GetCertificateResponse(ctx, iamToken, resourceID, resourceKeyType, folderID, versionID)
+	response, err := g.fetchCertificateContentResponse(ctx, iamToken, resourceID, resourceKeyType, folderID, versionID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to request certificate content to get secret map: %w", err)
 	}
 	chain := strings.Join(response.CertificateChain, "\n")
 	privateKey := response.PrivateKey
@@ -75,25 +75,19 @@ func (g *certificateManagerSecretGetter) GetSecretMap(ctx context.Context, iamTo
 	}, nil
 }
 
-func (g *certificateManagerSecretGetter) GetCertificateResponse(ctx context.Context, iamToken, resourceID string, resourceKeyType common.ResourceKeyType, folderID, versionID string) (*api.GetCertificateContentResponse, error) {
-	var response *api.GetCertificateContentResponse
+func (g *certificateManagerSecretGetter) fetchCertificateContentResponse(ctx context.Context, iamToken, resourceID string, resourceKeyType common.ResourceKeyType, folderID, versionID string) (*api.GetCertificateContentResponse, error) {
 	switch resourceKeyType {
 	case common.ResourceKeyTypeId:
-		var err error
-		response, err = g.certificateManagerClient.GetCertificateContent(ctx, iamToken, resourceID, versionID)
-		if err != nil {
-			return nil, fmt.Errorf("unable to request certificate content to get secret map: %w", err)
-		}
+		return g.certificateManagerClient.GetCertificateContent(ctx, iamToken, resourceID, versionID)
 	case common.ResourceKeyTypeName:
 		responseEx, err := g.certificateManagerClient.GetExCertificateContent(ctx, iamToken, folderID, resourceID, versionID)
 		if err != nil {
-			return nil, fmt.Errorf("unable to request certificate content to getEx secret map: %w", err)
+			return nil, err
 		}
-		response = convertToGetExCertificateContentResponse(responseEx)
+		return convertToGetCertificateContentResponse(responseEx), nil
 	default:
 		return nil, fmt.Errorf("unsupported resource key type '%v'", resourceKeyType)
 	}
-	return response, nil
 }
 
 func trimAndJoin(elems ...string) string {
@@ -105,7 +99,7 @@ func trimAndJoin(elems ...string) string {
 	return sb.String()
 }
 
-func convertToGetExCertificateContentResponse(response *api.GetExCertificateContentResponse) *api.GetCertificateContentResponse {
+func convertToGetCertificateContentResponse(response *api.GetExCertificateContentResponse) *api.GetCertificateContentResponse {
 	return &api.GetCertificateContentResponse{
 		CertificateId:    response.CertificateId,
 		CertificateChain: response.CertificateChain,
