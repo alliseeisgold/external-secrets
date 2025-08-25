@@ -47,20 +47,27 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 		caCertificate = &storeSpecYandexLockbox.CAProvider.Certificate
 	}
 
-	if storeSpecYandexLockbox.FetchByID != nil && storeSpecYandexLockbox.FetchByName != nil {
-		return nil, errors.New("invalid Yandex Lockbox SecretStore resource: both FetchByID and FetchByName are set")
-	}
-
 	var resourceKeyType common.ResourceKeyType
 	var folderID string
-	if storeSpecYandexLockbox.FetchByName != nil {
-		if storeSpecYandexLockbox.FetchByName.FolderID == "" {
-			return nil, errors.New("folderID is required when FetchByName is set")
+	policy := storeSpecYandexLockbox.FetchingPolicy
+	if policy != nil {
+		if policy.ByID != nil && policy.ByName != nil {
+			return nil, errors.New("invalid Yandex Lockbox SecretStore: mutually exclusive fetching policies 'byName' and 'byID' cannot both be set")
 		}
-		resourceKeyType = common.ResourceKeyTypeName
-		folderID = storeSpecYandexLockbox.FetchByName.FolderID
-	} else {
-		resourceKeyType = common.ResourceKeyTypeId
+		switch {
+		case policy.ByName != nil:
+			if policy.ByName.FolderID == "" {
+				return nil, errors.New("folderID is required when fetching policy is 'byName'")
+			}
+			resourceKeyType = common.ResourceKeyTypeName
+			folderID = policy.ByName.FolderID
+
+		case policy.ByID != nil:
+			resourceKeyType = common.ResourceKeyTypeId
+
+		default:
+			return nil, errors.New("invalid Yandex Lockbox SecretStore: requires either 'byName' or 'byID' policy")
+		}
 	}
 
 	return &common.SecretsClientInput{

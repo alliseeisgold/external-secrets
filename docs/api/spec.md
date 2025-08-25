@@ -1548,6 +1548,45 @@ External Secrets meta/v1.SecretKeySelector
 </tr>
 </tbody>
 </table>
+<h3 id="external-secrets.io/v1.ByID">ByID
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#external-secrets.io/v1.FetchingPolicy">FetchingPolicy</a>)
+</p>
+<p>
+<p>ByID configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as secret ID</p>
+</p>
+<h3 id="external-secrets.io/v1.ByName">ByName
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#external-secrets.io/v1.FetchingPolicy">FetchingPolicy</a>)
+</p>
+<p>
+<p>ByName configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as secret name</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>folderID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The folder to fetch secrets from</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="external-secrets.io/v1.CAProvider">CAProvider
 </h3>
 <p>
@@ -4681,16 +4720,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="external-secrets.io/v1.FetchByID">FetchByID
-</h3>
-<p>
-(<em>Appears on:</em>
-<a href="#external-secrets.io/v1.YandexCertificateManagerProvider">YandexCertificateManagerProvider</a>, 
-<a href="#external-secrets.io/v1.YandexLockboxProvider">YandexLockboxProvider</a>)
-</p>
-<p>
-</p>
-<h3 id="external-secrets.io/v1.FetchByName">FetchByName
+<h3 id="external-secrets.io/v1.FetchingPolicy">FetchingPolicy
 </h3>
 <p>
 (<em>Appears on:</em>
@@ -4709,13 +4739,26 @@ string
 <tbody>
 <tr>
 <td>
-<code>folderID</code></br>
+<code>byID</code></br>
 <em>
-string
+<a href="#external-secrets.io/v1.ByID">
+ByID
+</a>
 </em>
 </td>
 <td>
-<p>The folder to fetch secrets from</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>byName</code></br>
+<em>
+<a href="#external-secrets.io/v1.ByName">
+ByName
+</a>
+</em>
+</td>
+<td>
 </td>
 </tr>
 </tbody>
@@ -10938,30 +10981,16 @@ YandexCertificateManagerCAProvider
 </tr>
 <tr>
 <td>
-<code>fetchByID</code></br>
+<code>fetching</code></br>
 <em>
-<a href="#external-secrets.io/v1.FetchByID">
-FetchByID
+<a href="#external-secrets.io/v1.FetchingPolicy">
+FetchingPolicy
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>FetchByID configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as certificate ID</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>fetchByName</code></br>
-<em>
-<a href="#external-secrets.io/v1.FetchByName">
-FetchByName
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>FetchByName configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as certificate name</p>
+<p>FetchingPolicy configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as certificate ID or certificate name</p>
 </td>
 </tr>
 </tbody>
@@ -11086,30 +11115,16 @@ YandexLockboxCAProvider
 </tr>
 <tr>
 <td>
-<code>fetchByID</code></br>
+<code>fetching</code></br>
 <em>
-<a href="#external-secrets.io/v1.FetchByID">
-FetchByID
+<a href="#external-secrets.io/v1.FetchingPolicy">
+FetchingPolicy
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>FetchByID configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as secret ID</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>fetchByName</code></br>
-<em>
-<a href="#external-secrets.io/v1.FetchByName">
-FetchByName
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>FetchByName configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as secret name</p>
+<p>FetchingPolicy configures the provider to interpret the <code>data.secretKey.remoteRef.key</code> field in ExternalSecret as secret ID or secret name</p>
 </td>
 </tr>
 </tbody>

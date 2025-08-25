@@ -47,20 +47,27 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 		caCertificate = &storeSpecYandexCertificateManager.CAProvider.Certificate
 	}
 
-	if storeSpecYandexCertificateManager.FetchByID != nil && storeSpecYandexCertificateManager.FetchByName != nil {
-		return nil, errors.New("invalid Yandex Certificate Manager SecretStore resource: both FetchByID and FetchByName are set")
-	}
-
 	var resourceKeyType common.ResourceKeyType
 	var folderID string
-	if storeSpecYandexCertificateManager.FetchByName != nil {
-		if storeSpecYandexCertificateManager.FetchByName.FolderID == "" {
-			return nil, errors.New("folderID is required when FetchByName is set")
+	policy := storeSpecYandexCertificateManager.FetchingPolicy
+	if policy != nil {
+		if policy.ByID != nil && policy.ByName != nil {
+			return nil, errors.New("invalid Yandex Certificate Manager SecretStore: mutually exclusive fetching policies 'byName' and 'byID' cannot both be set")
 		}
-		resourceKeyType = common.ResourceKeyTypeName
-		folderID = storeSpecYandexCertificateManager.FetchByName.FolderID
-	} else {
-		resourceKeyType = common.ResourceKeyTypeId
+		switch {
+		case policy.ByName != nil:
+			if policy.ByName.FolderID == "" {
+				return nil, errors.New("folderID is required when fetching policy is 'byName'")
+			}
+			resourceKeyType = common.ResourceKeyTypeName
+			folderID = policy.ByName.FolderID
+
+		case policy.ByID != nil:
+			resourceKeyType = common.ResourceKeyTypeId
+
+		default:
+			return nil, errors.New("invalid Yandex Certificate Manager SecretStore: requires either 'byName' or 'byID' policy")
+		}
 	}
 
 	return &common.SecretsClientInput{

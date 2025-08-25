@@ -917,7 +917,7 @@ func TestGetSecretWithFetchByNameWithoutFolderID(t *testing.T) {
 	store := newYandexCertificateManagerSecretStoreWithFetchByName("", namespace, authorizedKeySecretName, authorizedKeySecretKey, "")
 	provider := newCertificateManagerProvider(fakeClock, fakeCertificateManagerServer)
 	_, err = provider.NewClient(ctx, store, k8sClient, namespace)
-	tassert.EqualError(t, err, "folderID is required when FetchByName is set")
+	tassert.EqualError(t, err, "folderID is required when fetching policy is 'byName'")
 }
 
 func TestGetSecretWithFetchByIDWithoutProperty(t *testing.T) {
@@ -983,9 +983,11 @@ func TestGetSecretWithBothFetchByIDAndFetchByName(t *testing.T) {
 							Key:  authorizedKeySecretKey,
 						},
 					},
-					FetchByID: &esv1.FetchByID{},
-					FetchByName: &esv1.FetchByName{
-						FolderID: "folderId",
+					FetchingPolicy: &esv1.FetchingPolicy{
+						ByID: &esv1.ByID{},
+						ByName: &esv1.ByName{
+							FolderID: "folderId",
+						},
 					},
 				},
 			},
@@ -994,7 +996,7 @@ func TestGetSecretWithBothFetchByIDAndFetchByName(t *testing.T) {
 
 	provider := newCertificateManagerProvider(fakeClock, fakeCertificateManagerServer)
 	_, err = provider.NewClient(ctx, store, k8sClient, namespace)
-	tassert.EqualError(t, err, "invalid Yandex Certificate Manager SecretStore resource: both FetchByID and FetchByName are set")
+	tassert.EqualError(t, err, "invalid Yandex Certificate Manager SecretStore: mutually exclusive fetching policies 'byName' and 'byID' cannot both be set")
 }
 
 // helper functions
@@ -1050,8 +1052,10 @@ func newYandexCertificateManagerSecretStoreWithFetchByName(apiEndpoint, namespac
 							Key:  authorizedKeySecretKey,
 						},
 					},
-					FetchByName: &esv1.FetchByName{
-						FolderID: folderID,
+					FetchingPolicy: &esv1.FetchingPolicy{
+						ByName: &esv1.ByName{
+							FolderID: folderID,
+						},
 					},
 				},
 			},
@@ -1074,7 +1078,9 @@ func newYandexCertificateManagerSecretStoreWithFetchByID(apiEndpoint, namespace,
 							Key:  authorizedKeySecretKey,
 						},
 					},
-					FetchByID: &esv1.FetchByID{},
+					FetchingPolicy: &esv1.FetchingPolicy{
+						ByID: &esv1.ByID{},
+					},
 				},
 			},
 		},

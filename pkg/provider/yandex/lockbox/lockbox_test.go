@@ -836,7 +836,7 @@ func TestGetSecretWithFetchByNameWithoutFolderID(t *testing.T) {
 
 	provider := newLockboxProvider(fakeClock, fakeLockboxServer)
 	_, err = provider.NewClient(ctx, store, k8sClient, namespace)
-	tassert.EqualError(t, err, "folderID is required when FetchByName is set")
+	tassert.EqualError(t, err, "folderID is required when fetching policy is 'byName'")
 }
 
 func TestGetSecretWithFetchByIDForAllEntries(t *testing.T) {
@@ -957,9 +957,11 @@ func TestGetSecretWithBothFetchByIDAndFetchByName(t *testing.T) {
 							Key:  authorizedKeySecretKey,
 						},
 					},
-					FetchByID: &esv1.FetchByID{},
-					FetchByName: &esv1.FetchByName{
-						FolderID: "folderID",
+					FetchingPolicy: &esv1.FetchingPolicy{
+						ByID: &esv1.ByID{},
+						ByName: &esv1.ByName{
+							FolderID: "folderID",
+						},
 					},
 				},
 			},
@@ -970,7 +972,7 @@ func TestGetSecretWithBothFetchByIDAndFetchByName(t *testing.T) {
 	tassert.EqualError(
 		t,
 		err,
-		"invalid Yandex Lockbox SecretStore resource: both FetchByID and FetchByName are set",
+		"invalid Yandex Lockbox SecretStore: mutually exclusive fetching policies 'byName' and 'byID' cannot both be set",
 	)
 }
 
@@ -1027,8 +1029,10 @@ func newYandexLockboxSecretStoreWithFetchByName(apiEndpoint, namespace, authoriz
 							Key:  authorizedKeySecretKey,
 						},
 					},
-					FetchByName: &esv1.FetchByName{
-						FolderID: folderID,
+					FetchingPolicy: &esv1.FetchingPolicy{
+						ByName: &esv1.ByName{
+							FolderID: folderID,
+						},
 					},
 				},
 			},
@@ -1051,7 +1055,9 @@ func newYandexLockboxSecretStoreWithFetchByID(apiEndpoint, namespace, authorized
 							Key:  authorizedKeySecretKey,
 						},
 					},
-					FetchByID: &esv1.FetchByID{},
+					FetchingPolicy: &esv1.FetchingPolicy{
+						ByID: &esv1.ByID{},
+					},
 				},
 			},
 		},
