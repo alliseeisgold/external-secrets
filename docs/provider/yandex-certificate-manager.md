@@ -40,7 +40,7 @@ spec:
 
     # Optionally, to enable fetching secrets by name:
     #
-    # fetchByName: # place "fetching:" on the same level as "auth:"
+    # fetching: # place "fetching:" on the same level as "auth:"
     #   byName:
     #     folderId: ***** # ID of the folder to fetch certificates from
 ```
