@@ -51,9 +51,6 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	var folderID string
 	policy := storeSpecYandexLockbox.FetchingPolicy
 	if policy != nil {
-		if policy.ByID != nil && policy.ByName != nil {
-			return nil, errors.New("invalid Yandex Lockbox SecretStore: mutually exclusive fetching policies 'byName' and 'byID' cannot both be set")
-		}
 		switch {
 		case policy.ByName != nil:
 			if policy.ByName.FolderID == "" {
