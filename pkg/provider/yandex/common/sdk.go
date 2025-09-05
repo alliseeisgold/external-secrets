@@ -19,7 +19,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/endpoint"
@@ -124,7 +123,6 @@ func buildSDK(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key
 			return nil, err
 		}
 	} else if iamToken != nil {
-		fmt.Println("True")
 		creds = ycsdk.NewIAMTokenCredentials(iamToken.Token)
 	} else {
 		creds = ycsdk.InstanceServiceAccount()

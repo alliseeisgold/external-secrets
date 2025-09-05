@@ -95,9 +95,10 @@ func InitYandexCloudProvider(
 	iamTokenCleanupDelay time.Duration,
 ) *YandexCloudProvider {
 
+	// этот блок в vault провайдере инициализируется в NewClient. https://github.com/external-secrets/external-secrets/blob/main/pkg/provider/vault/provider.go#L92
 	config, err := ctrlcfg.GetConfig()
 	if err != nil {
-		logger.Error(err, "failed to get any Kubernetes config, token logging will be disabled")
+		logger.Error(err, "failed to get any Kubernetes config")
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
@@ -230,7 +231,6 @@ func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEn
 	p.secretGetterMapMutex.Lock()
 	defer p.secretGetterMapMutex.Unlock()
 
-	fmt.Println("ApiEndpoint:", apiEndpoint)
 	var iamToken *IamToken
 	if wlifAuthConfig != nil {
 		var err error
@@ -238,6 +238,9 @@ func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEn
 		if err != nil {
 			return nil, err
 		}
+		// Мне не нравится этот подход. Нужно сделать отдельный кэш, как в случае с авторизацией не через WLIF, но, по сути,
+		// этот кэш будет зависеть от времени жизни IAM-токена. Поэтому я пока подумаю, как это правильно реализовать (т.е. обновлять кеш по истечении срока действия токена)
+		return p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate, iamToken)
 	}
 
 	if _, ok := p.secretGetteMap[apiEndpoint]; !ok {
@@ -406,6 +409,7 @@ func (p *YandexCloudProvider) exchangeK8sTokenForYandexIAM(ctx context.Context, 
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
+	// наверное лучше инициализировать HTTP-клиент при создании провайдера и использовать его повторно
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -441,7 +445,7 @@ func (p *YandexCloudProvider) getExchangedIamToken(ctx context.Context, wlifAuth
 		return nil, fmt.Errorf("failed to exchange token: %w", err)
 	}
 
-	expiresAt := p.clock.CurrentTime().Add(time.Duration(yandexTokenResponse.ExpiresIn) * time.Second * 0)
+	expiresAt := p.clock.CurrentTime().Add(time.Duration(yandexTokenResponse.ExpiresIn) * time.Second)
 
 	return &IamToken{
 		Token:     yandexTokenResponse.AccessToken,
