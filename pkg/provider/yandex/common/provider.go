@@ -58,7 +58,8 @@ type YandexCloudProvider struct {
 	newSecretGetterFunc NewSecretGetterFunc
 	newIamTokenFunc     NewIamTokenFunc
 
-	secretGetteMap       map[string]SecretGetter // apiEndpoint -> SecretGetter
+	secretGetteMap       map[string]SecretGetter       // apiEndpoint -> SecretGetter
+	wlifSecretGetterMap  map[wlifTokenKey]SecretGetter // apiEndpoint -> SecretGetter
 	secretGetterMapMutex sync.Mutex
 	iamTokenMap          map[iamTokenKey]*IamToken
 	wlifTokenMap         map[wlifTokenKey]*IamToken
@@ -113,6 +114,7 @@ func InitYandexCloudProvider(
 		newSecretGetterFunc: newSecretGetterFunc,
 		newIamTokenFunc:     newIamTokenFunc,
 		secretGetteMap:      make(map[string]SecretGetter),
+		wlifSecretGetterMap: make(map[wlifTokenKey]SecretGetter),
 		iamTokenMap:         make(map[iamTokenKey]*IamToken),
 		wlifTokenMap:        make(map[wlifTokenKey]*IamToken),
 		corev1:              clientset.CoreV1(),
@@ -234,13 +236,20 @@ func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEn
 	var iamToken *IamToken
 	if wlifAuthConfig != nil {
 		var err error
-		iamToken, err = p.getOrCreateIamToken(ctx, apiEndpoint, nil, wlifAuthConfig, nil)
+		iamToken, err = p.getOrCreateIamToken(ctx, apiEndpoint, authorizedKey, wlifAuthConfig, caCertificate)
 		if err != nil {
 			return nil, err
 		}
-		// Мне не нравится этот подход. Нужно сделать отдельный кэш, как в случае с авторизацией не через WLIF, но, по сути,
-		// этот кэш будет зависеть от времени жизни IAM-токена. Поэтому я пока подумаю, как это правильно реализовать (т.е. обновлять кеш по истечении срока действия токена)
-		return p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate, iamToken)
+		wlifTokenKey := buildWlifTokenKey(wlifAuthConfig)
+		if _, ok := p.wlifSecretGetterMap[wlifTokenKey]; !ok {
+			p.logger.Info("creating SecretGetter with WLIF", "wlifAuthConfig", wlifAuthConfig)
+			secretGetter, err := p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate, iamToken)
+			if err != nil {
+				return nil, err
+			}
+			p.wlifSecretGetterMap[wlifTokenKey] = secretGetter
+		}
+		return p.wlifSecretGetterMap[wlifTokenKey], nil
 	}
 
 	if _, ok := p.secretGetteMap[apiEndpoint]; !ok {
