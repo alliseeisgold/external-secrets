@@ -36,46 +36,28 @@ func NewGrpcConnection(
 	apiEndpointID string, // an ID from https://api.cloud.yandex.net/endpoints
 	authorizedKey *iamkey.Key,
 	caCertificate []byte,
-	iamToken *IamToken,
 ) (*grpc.ClientConn, error) {
 	tlsConfig, err := tlsConfig(caCertificate)
 	if err != nil {
 		return nil, err
 	}
 
-	sdk, err := buildSDK(ctx, apiEndpoint, authorizedKey, tlsConfig, iamToken)
+	conn, err := createGrpcClient(apiEndpoint, tlsConfig)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = closeSDK(ctx, sdk)
-	}()
 
-	serviceAPIEndpoint, err := sdk.ApiEndpoint().ApiEndpoint().Get(ctx, &endpoint.GetApiEndpointRequest{
+	defer conn.Close()
+
+	serviceAPIEndpoint, err := endpoint.NewApiEndpointServiceClient(conn).Get(context.Background(), &endpoint.GetApiEndpointRequest{
 		ApiEndpointId: apiEndpointID,
 	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	// Until gRPC proposal A61 is implemented in grpc-go, default gRPC name resolver (dns)
-	// is incompatible with dualstack backends, and YC API backends are dualstack.
-	// However, if passthrough resolver is used instead, grpc-go won't do any name resolution
-	// and will pass the endpoint to net.Dial as-is, which would utilize happy-eyeballs
-	// support in Go's net package.
-	// So we explicitly set gRPC resolver to `passthrough` to match `ycsdk`s behavior,
-	// which uses `passthrough` resolver implicitly by using deprecated grpc.DialContext
-	// instead of grpc.NewClient used here
-	target := "passthrough:///" + serviceAPIEndpoint.Address
-	return grpc.NewClient(target,
-		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
-		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:                time.Second * 30,
-			Timeout:             time.Second * 10,
-			PermitWithoutStream: false,
-		}),
-		grpc.WithUserAgent("external-secrets"),
-	)
+	return createGrpcClient(serviceAPIEndpoint.Address, tlsConfig)
 }
 
 // Exchanges the given authorized key to an IAM token.
@@ -85,7 +67,7 @@ func NewIamToken(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.
 		return nil, err
 	}
 
-	sdk, err := buildSDK(ctx, apiEndpoint, authorizedKey, tlsConfig, nil)
+	sdk, err := buildSDK(ctx, apiEndpoint, authorizedKey, tlsConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +96,7 @@ func tlsConfig(caCertificate []byte) (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
-func buildSDK(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, tlsConfig *tls.Config, iamToken *IamToken) (*ycsdk.SDK, error) {
+func buildSDK(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, tlsConfig *tls.Config) (*ycsdk.SDK, error) {
 	var creds ycsdk.Credentials
 	if authorizedKey != nil {
 		var err error
@@ -122,8 +104,6 @@ func buildSDK(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key
 		if err != nil {
 			return nil, err
 		}
-	} else if iamToken != nil {
-		creds = ycsdk.NewIAMTokenCredentials(iamToken.Token)
 	} else {
 		creds = ycsdk.InstanceServiceAccount()
 	}
@@ -154,4 +134,28 @@ func (t PerRPCCredentials) GetRequestMetadata(_ context.Context, _ ...string) (m
 
 func (PerRPCCredentials) RequireTransportSecurity() bool {
 	return true
+}
+
+func createGrpcClient(apiEndpoint string, tlsConfig *tls.Config) (*grpc.ClientConn, error) {
+	// Until gRPC proposal A61 is implemented in grpc-go, default gRPC name resolver (dns)
+	// is incompatible with dualstack backends, and YC API backends are dualstack.
+	// However, if passthrough resolver is used instead, grpc-go won't do any name resolution
+	// and will pass the endpoint to net. Dial as-is, which would utilize happy-eyeballs
+	// support in Go's net package.
+	// So we explicitly set gRPC resolver to `passthrough` to match `ycsdk`s behavior,
+	// which uses `passthrough` resolver implicitly by using deprecated grpc.DialContext
+	// instead of grpc.NewClient used here
+	if apiEndpoint == "" {
+		apiEndpoint = "api.cloud.yandex.net:443"
+	}
+	target := "passthrough:///" + apiEndpoint
+	return grpc.NewClient(target,
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                time.Second * 30,
+			Timeout:             time.Second * 10,
+			PermitWithoutStream: false,
+		}),
+		grpc.WithUserAgent("external-secrets"),
+	)
 }

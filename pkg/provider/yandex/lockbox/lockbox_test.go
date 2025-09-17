@@ -59,7 +59,7 @@ func TestNewClient(t *testing.T) {
 			Provider: &esv1.SecretStoreProvider{
 				YandexLockbox: &esv1.YandexLockboxProvider{
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Key:  authorizedKeySecretKey,
 							Name: authorizedKeySecretName,
 						},
@@ -943,7 +943,7 @@ func TestGetSecretWithInvalidFetchingPolicy(t *testing.T) {
 			Provider: &esv1.SecretStoreProvider{
 				YandexLockbox: &esv1.YandexLockboxProvider{
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Name: authorizedKeySecretName,
 							Key:  authorizedKeySecretKey,
 						},
@@ -972,7 +972,7 @@ func newLockboxProvider(clock clock.Clock, fakeLockboxServer *client.FakeLockbox
 		ctrl.Log.WithName("provider").WithName("yandex").WithName("lockbox"),
 		clock,
 		adaptInput,
-		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, iamToken *common.IamToken) (common.SecretGetter, error) {
+		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (common.SecretGetter, error) {
 			return newLockboxSecretGetter(client.NewFakeLockboxClient(fakeLockboxServer))
 		},
 		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*common.IamToken, error) {
@@ -992,7 +992,7 @@ func newYandexLockboxSecretStore(apiEndpoint, namespace, authorizedKeySecretName
 				YandexLockbox: &esv1.YandexLockboxProvider{
 					APIEndpoint: apiEndpoint,
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Name: authorizedKeySecretName,
 							Key:  authorizedKeySecretKey,
 						},
@@ -1013,7 +1013,7 @@ func newYandexLockboxSecretStoreWithFetchByName(apiEndpoint, namespace, authoriz
 				YandexLockbox: &esv1.YandexLockboxProvider{
 					APIEndpoint: apiEndpoint,
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Name: authorizedKeySecretName,
 							Key:  authorizedKeySecretKey,
 						},
@@ -1039,7 +1039,7 @@ func newYandexLockboxSecretStoreWithFetchByID(apiEndpoint, namespace, authorized
 				YandexLockbox: &esv1.YandexLockboxProvider{
 					APIEndpoint: apiEndpoint,
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Name: authorizedKeySecretName,
 							Key:  authorizedKeySecretKey,
 						},

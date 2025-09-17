@@ -39,15 +39,15 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	storeSpecYandexLockbox := storeSpec.Provider.YandexLockbox
 
 	var authorizedKey *esmeta.SecretKeySelector
-	if storeSpecYandexLockbox.Auth.AuthorizedKey.Name != "" {
-		authorizedKey = &storeSpecYandexLockbox.Auth.AuthorizedKey
+	if storeSpecYandexLockbox.Auth.AuthorizedKey != nil {
+		authorizedKey = storeSpecYandexLockbox.Auth.AuthorizedKey
 	}
 
 	var yandexIamServiceAccountID string
 	var serviceAccountRef *esmeta.ServiceAccountSelector
-	if storeSpecYandexLockbox.Auth.WlifAuth != nil {
-		yandexIamServiceAccountID = storeSpecYandexLockbox.Auth.WlifAuth.YandexIamServiceAccountID
-		serviceAccountRef = &storeSpecYandexLockbox.Auth.WlifAuth.ServiceAccountRef
+	if storeSpecYandexLockbox.Auth.JwtAuth != nil {
+		yandexIamServiceAccountID = storeSpecYandexLockbox.Auth.JwtAuth.YandexIamServiceAccountID
+		serviceAccountRef = &storeSpecYandexLockbox.Auth.JwtAuth.ServiceAccountRef
 	}
 
 	var caCertificate *esmeta.SecretKeySelector
@@ -86,8 +86,8 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	}, nil
 }
 
-func newSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, iamToken *common.IamToken) (common.SecretGetter, error) {
-	lockboxClient, err := client.NewGrpcLockboxClient(ctx, apiEndpoint, authorizedKey, caCertificate, iamToken)
+func newSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (common.SecretGetter, error) {
+	lockboxClient, err := client.NewGrpcLockboxClient(ctx, apiEndpoint, authorizedKey, caCertificate)
 	if err != nil {
 		return nil, err
 	}

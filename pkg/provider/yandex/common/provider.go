@@ -16,8 +16,6 @@ package common
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -33,15 +31,7 @@ import (
 	clock2 "github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
 	"github.com/external-secrets/external-secrets/pkg/utils/resolvers"
 
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
-
-	authenticationv1 "k8s.io/api/authentication/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	ctrlcfg "sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
@@ -58,33 +48,11 @@ type YandexCloudProvider struct {
 	newSecretGetterFunc NewSecretGetterFunc
 	newIamTokenFunc     NewIamTokenFunc
 
-	secretGetteMap       map[string]SecretGetter       // apiEndpoint -> SecretGetter
-	wlifSecretGetterMap  map[wlifTokenKey]SecretGetter // apiEndpoint -> SecretGetter
+	secretGetteMap       map[string]SecretGetter // apiEndpoint -> SecretGetter
 	secretGetterMapMutex sync.Mutex
-	iamTokenMap          map[iamTokenKey]*IamToken
-	wlifTokenMap         map[wlifTokenKey]*IamToken
+	iamTokenMap          map[any]*IamToken // not type-safe!
 	iamTokenMapMutex     sync.Mutex
-	corev1               typedcorev1.CoreV1Interface
-}
-
-type iamTokenKey struct {
-	authorizedKeyID  string
-	serviceAccountID string
-	privateKeyHash   string
-}
-
-type wlifTokenKey struct {
-	yandexIamServiceAccountID string
-	serviceAccountName        string
-	namespace                 string
-	audiences                 string
-}
-
-type WlifAuthConfig struct {
-	YandexIamServiceAccountID string
-	ServiceAccountName        string
-	Namespace                 *string
-	Audiences                 []string
+	iamTokenProvider     IamTokenProvider
 }
 
 func InitYandexCloudProvider(
@@ -96,17 +64,6 @@ func InitYandexCloudProvider(
 	iamTokenCleanupDelay time.Duration,
 ) *YandexCloudProvider {
 
-	// этот блок в vault провайдере инициализируется в NewClient. https://github.com/external-secrets/external-secrets/blob/main/pkg/provider/vault/provider.go#L92
-	config, err := ctrlcfg.GetConfig()
-	if err != nil {
-		logger.Error(err, "failed to get any Kubernetes config")
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		logger.Error(err, err.Error())
-	}
-
 	provider := &YandexCloudProvider{
 		logger:              logger,
 		clock:               clock,
@@ -114,10 +71,7 @@ func InitYandexCloudProvider(
 		newSecretGetterFunc: newSecretGetterFunc,
 		newIamTokenFunc:     newIamTokenFunc,
 		secretGetteMap:      make(map[string]SecretGetter),
-		wlifSecretGetterMap: make(map[wlifTokenKey]SecretGetter),
-		iamTokenMap:         make(map[iamTokenKey]*IamToken),
-		wlifTokenMap:        make(map[wlifTokenKey]*IamToken),
-		corev1:              clientset.CoreV1(),
+		iamTokenMap:         make(map[any]*IamToken),
 	}
 
 	if iamTokenCleanupDelay > 0 {
@@ -134,7 +88,7 @@ func InitYandexCloudProvider(
 
 type NewSecretSetterFunc func()
 type AdaptInputFunc func(store esv1.GenericStore) (*SecretsClientInput, error)
-type NewSecretGetterFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, iamToken *IamToken) (SecretGetter, error)
+type NewSecretGetterFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (SecretGetter, error)
 type NewIamTokenFunc func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*IamToken, error)
 
 type IamToken struct {
@@ -190,16 +144,6 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 		}
 	}
 
-	var wlifAuthConfig *WlifAuthConfig
-	if input.YandexIamServiceAccountID != "" && input.ServiceAccountRef != nil {
-		wlifAuthConfig = &WlifAuthConfig{
-			YandexIamServiceAccountID: input.YandexIamServiceAccountID,
-			ServiceAccountName:        input.ServiceAccountRef.Name,
-			Namespace:                 input.ServiceAccountRef.Namespace,
-			Audiences:                 input.ServiceAccountRef.Audiences,
-		}
-	}
-
 	var caCertificateData []byte
 	if input.CACertificate != nil {
 		caCert, err := resolvers.SecretKeyRef(
@@ -215,13 +159,21 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 		caCertificateData = []byte(caCert)
 	}
 
-	secretGetter, err := p.getOrCreateSecretGetter(ctx, input.APIEndpoint, authorizedKey, caCertificateData, wlifAuthConfig)
+	// https://github.com/external-secrets/external-secrets/blob/a116df926276d985213f6049fec953576131a91b/pkg/provider/yandex/common/provider.go#L136
+	iamTokenProvider, err := p.initializeIamTokenProvider(authorizedKey, input.YandexIamServiceAccountID, input.ServiceAccountRef, namespace)
+
+	if err != nil {
+		return nil, err
+	}
+	p.iamTokenProvider = iamTokenProvider
+
+	secretGetter, err := p.getOrCreateSecretGetter(ctx, input.APIEndpoint, authorizedKey, caCertificateData)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Yandex.Cloud client: %w", err)
 	}
 
-	iamToken, err := p.getOrCreateIamToken(ctx, input.APIEndpoint, authorizedKey, wlifAuthConfig, caCertificateData)
+	iamToken, err := p.getOrCreateIamToken(ctx, input.APIEndpoint, caCertificateData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create IAM token: %w", err)
 	}
@@ -229,32 +181,13 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 	return &yandexCloudSecretsClient{secretGetter, nil, iamToken.Token, input.ResourceKeyType, input.FolderID}, nil
 }
 
-func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, wlifAuthConfig *WlifAuthConfig) (SecretGetter, error) {
+func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (SecretGetter, error) {
 	p.secretGetterMapMutex.Lock()
 	defer p.secretGetterMapMutex.Unlock()
 
-	var iamToken *IamToken
-	if wlifAuthConfig != nil {
-		var err error
-		iamToken, err = p.getOrCreateIamToken(ctx, apiEndpoint, authorizedKey, wlifAuthConfig, caCertificate)
-		if err != nil {
-			return nil, err
-		}
-		wlifTokenKey := buildWlifTokenKey(wlifAuthConfig)
-		if _, ok := p.wlifSecretGetterMap[wlifTokenKey]; !ok {
-			p.logger.Info("creating SecretGetter with WLIF", "wlifAuthConfig", wlifAuthConfig)
-			secretGetter, err := p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate, iamToken)
-			if err != nil {
-				return nil, err
-			}
-			p.wlifSecretGetterMap[wlifTokenKey] = secretGetter
-		}
-		return p.wlifSecretGetterMap[wlifTokenKey], nil
-	}
-
 	if _, ok := p.secretGetteMap[apiEndpoint]; !ok {
 		p.logger.Info("creating SecretGetter", "apiEndpoint", apiEndpoint)
-		secretGetter, err := p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate, iamToken)
+		secretGetter, err := p.newSecretGetterFunc(ctx, apiEndpoint, authorizedKey, caCertificate)
 		if err != nil {
 			return nil, err
 		}
@@ -263,42 +196,21 @@ func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEn
 	return p.secretGetteMap[apiEndpoint], nil
 }
 
-func (p *YandexCloudProvider) getOrCreateIamToken(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, wlifAuthConfig *WlifAuthConfig, caCertificate []byte) (*IamToken, error) {
+func (p *YandexCloudProvider) getOrCreateIamToken(ctx context.Context, apiEndpoint string, caCertificate []byte) (*IamToken, error) {
 	p.iamTokenMapMutex.Lock()
 	defer p.iamTokenMapMutex.Unlock()
 
-	if wlifAuthConfig != nil {
-		wlifTokenKey := buildWlifTokenKey(wlifAuthConfig)
-		if iamToken, ok := p.wlifTokenMap[wlifTokenKey]; !ok || !p.isIamTokenUsable(iamToken) {
-			iamToken2, err := p.getExchangedIamToken(ctx, wlifAuthConfig)
-			if err != nil {
-				p.logger.Error(err, "failed to create IAM token via exchange")
-			} else {
-				p.logger.Info("created IAM token via exchange", "expiresAt", iamToken2.ExpiresAt)
-			}
-			p.wlifTokenMap[wlifTokenKey] = iamToken2
-		}
-		return p.wlifTokenMap[wlifTokenKey], nil
-	}
-
-	iamTokenKey := buildIamTokenKey(authorizedKey)
+	iamTokenKey := buildIamTokenKey(p.iamTokenProvider)
 	if iamToken, ok := p.iamTokenMap[iamTokenKey]; !ok || !p.isIamTokenUsable(iamToken) {
-		if authorizedKey != nil {
-			p.logger.Info("creating IAM token", "authorizedKeyId", authorizedKey.Id)
-		} else {
-			p.logger.Info("creating instance SA IAM token")
-		}
+		// тут не знал, что добавить в логах, поэтому просто добавил тип текущего провайдер
+		p.logger.Info("creating IAM token via provider", "type", fmt.Sprintf("%T", p.iamTokenProvider))
 
-		iamToken, err := p.newIamTokenFunc(ctx, apiEndpoint, authorizedKey, caCertificate)
+		iamToken, err := p.iamTokenProvider.GetIamToken(ctx, apiEndpoint, caCertificate)
 		if err != nil {
 			return nil, err
 		}
 
-		if authorizedKey != nil {
-			p.logger.Info("created IAM token", "authorizedKeyId", authorizedKey.Id, "expiresAt", iamToken.ExpiresAt)
-		} else {
-			p.logger.Info("created instance SA IAM token", "expiresAt", iamToken.ExpiresAt)
-		}
+		p.logger.Info("created IAM token via provider", "type", fmt.Sprintf("%T", p.iamTokenProvider), "expiresAt", iamToken.ExpiresAt)
 
 		p.iamTokenMap[iamTokenKey] = iamToken
 	}
@@ -310,38 +222,13 @@ func (p *YandexCloudProvider) isIamTokenUsable(iamToken *IamToken) bool {
 	return now.Add(maxSecretsClientLifetime).Before(iamToken.ExpiresAt)
 }
 
-func buildIamTokenKey(authorizedKey *iamkey.Key) iamTokenKey {
-	if authorizedKey == nil {
-		return iamTokenKey{}
-	}
-
-	privateKeyHash := sha256.Sum256([]byte(authorizedKey.PrivateKey))
-	return iamTokenKey{
-		authorizedKey.GetId(),
-		authorizedKey.GetServiceAccountId(),
-		hex.EncodeToString(privateKeyHash[:]),
-	}
-}
-
-func buildWlifTokenKey(wlifAuthConfig *WlifAuthConfig) wlifTokenKey {
-	if wlifAuthConfig == nil {
-		return wlifTokenKey{}
-	}
-
-	return wlifTokenKey{
-		wlifAuthConfig.YandexIamServiceAccountID,
-		wlifAuthConfig.ServiceAccountName,
-		*wlifAuthConfig.Namespace,
-		strings.Join(wlifAuthConfig.Audiences, " "),
-	}
-}
-
 // Used for testing.
 func (p *YandexCloudProvider) IsIamTokenCached(authorizedKey *iamkey.Key) bool {
 	p.iamTokenMapMutex.Lock()
 	defer p.iamTokenMapMutex.Unlock()
 
-	_, ok := p.iamTokenMap[buildIamTokenKey(authorizedKey)]
+	iamTokenKey := buildIamTokenKey(p.iamTokenProvider)
+	_, ok := p.iamTokenMap[iamTokenKey]
 	return ok
 }
 
@@ -351,7 +238,7 @@ func (p *YandexCloudProvider) CleanUpIamTokenMap() {
 
 	for key, value := range p.iamTokenMap {
 		if p.clock.CurrentTime().After(value.ExpiresAt) {
-			p.logger.Info("deleting IAM token", "authorizedKeyId", key.authorizedKeyID)
+			p.logger.Info("deleting IAM token", "key", key)
 			delete(p.iamTokenMap, key)
 		}
 	}
@@ -365,99 +252,43 @@ func (p *YandexCloudProvider) ValidateStore(store esv1.GenericStore) (admission.
 	return nil, nil
 }
 
-// creates token for k8s service account
-func (p *YandexCloudProvider) createTokenForServiceAccount(ctx context.Context, wlifConfig *WlifAuthConfig) (string, error) {
+func (p *YandexCloudProvider) initializeIamTokenProvider(authorizedKey *iamkey.Key, yandexIamServiceAccountId string, serviceAccountRef *esmeta.ServiceAccountSelector, namespace string) (IamTokenProvider, error) {
+	var provider IamTokenProvider
+	switch {
+	case authorizedKey != nil:
+		provider = &AuthorizedKeyAuthProvider{
+			AuthorizedKey:   authorizedKey,
+			NewIamTokenFunc: p.newIamTokenFunc,
+		}
+	case yandexIamServiceAccountId != "" && serviceAccountRef != nil:
+		// этот блок в vault провайдере инициализируется в NewClient. https://github.com/external-secrets/external-secrets/blob/main/pkg/provider/vault/provider.go#L92
+		// UPD: по сути это инциализируется в NewClient
+		config, err := ctrlcfg.GetConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get any Kubernetes config: %w", err)
+		}
 
-	tokenRequest := &authenticationv1.TokenRequest{
-		Spec: authenticationv1.TokenRequestSpec{
-			Audiences: wlifConfig.Audiences,
-		},
+		clientset, err := kubernetes.NewForConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		// https://github.com/external-secrets/external-secrets/blob/a116df926276d985213f6049fec953576131a91b/pkg/provider/yandex/common/provider.go#L136
+		ns := &namespace
+		if serviceAccountRef.Namespace != nil {
+			ns = serviceAccountRef.Namespace
+		}
+		provider = &WlifAuthProvider{
+			YandexIamServiceAccountID: yandexIamServiceAccountId,
+			ServiceAccountName:        serviceAccountRef.Name,
+			Namespace:                 ns,
+			Audiences:                 serviceAccountRef.Audiences,
+			clock:                     p.clock,
+			logger:                    p.logger,
+			corev1:                    clientset.CoreV1(),
+		}
+		// на уровне кубернетиса должна ошибку выдать
+		// default:
+		// 	return nil, errors.New("invalid Yandex Lockbox SecretStore: requires either 'authorizedKey' or 'jwt'")
 	}
-
-	tokenResponse, err := p.corev1.ServiceAccounts(*wlifConfig.Namespace).
-		CreateToken(ctx, wlifConfig.ServiceAccountName, tokenRequest, metav1.CreateOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	return tokenResponse.Status.Token, nil
-}
-
-const (
-	TokenUrl        = "https://auth.yandex.cloud/oauth/token"
-	GrantType       = "urn:ietf:params:oauth:grant-type:token-exchange"
-	IdTokenType     = "urn:ietf:params:oauth:token-type:id_token"
-	AccessTokenType = "urn:ietf:params:oauth:token-type:access_token"
-)
-
-type YandexTokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
-	Scope       string `json:"scope"`
-}
-
-func (p *YandexCloudProvider) exchangeK8sTokenForYandexIAM(ctx context.Context, k8sToken string, cloudServiceAccountID string) (*YandexTokenResponse, error) {
-	formData := map[string]string{
-		"grant_type":           GrantType,
-		"subject_token":        k8sToken,
-		"subject_token_type":   IdTokenType,
-		"requested_token_type": AccessTokenType,
-		"audience":             cloudServiceAccountID,
-	}
-
-	values := url.Values{}
-	for key, value := range formData {
-		values.Add(key, value)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", TokenUrl, strings.NewReader(values.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	// наверное лучше инициализировать HTTP-клиент при создании провайдера и использовать его повторно
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("token exchange failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var tokenResp YandexTokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return nil, fmt.Errorf("failed to decode token response: %w", err)
-	}
-
-	p.logger.Info("Successfully exchanged K8S token for Yandex IAM token",
-		"cloudSA", cloudServiceAccountID,
-		"expiresIn", tokenResp.ExpiresIn)
-
-	return &tokenResp, nil
-}
-
-func (p *YandexCloudProvider) getExchangedIamToken(ctx context.Context, wlifAuthConfig *WlifAuthConfig) (*IamToken, error) {
-	k8sToken, err := p.createTokenForServiceAccount(ctx, wlifAuthConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get K8S token: %w", err)
-	}
-
-	yandexTokenResponse, err := p.exchangeK8sTokenForYandexIAM(ctx, k8sToken, wlifAuthConfig.YandexIamServiceAccountID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to exchange token: %w", err)
-	}
-
-	expiresAt := p.clock.CurrentTime().Add(time.Duration(yandexTokenResponse.ExpiresIn) * time.Second)
-
-	return &IamToken{
-		Token:     yandexTokenResponse.AccessToken,
-		ExpiresAt: expiresAt,
-	}, nil
+	return provider, nil
 }

@@ -6738,6 +6738,8 @@ spec:
                           type: string
                         auth:
                           description: Auth defines the information necessary to authenticate against Yandex.Cloud
+                          maxProperties: 1
+                          minProperties: 1
                           properties:
                             authorizedKeySecretRef:
                               description: The authorized key used for authentication
@@ -6766,7 +6768,7 @@ spec:
                                   type: string
                               type: object
                             jwt:
-                              description: Wlif authorization
+                              description: JWT authorization
                               properties:
                                 serviceAccountRef:
                                   description: Kubernetes service account reference
@@ -6865,6 +6867,8 @@ spec:
                           type: string
                         auth:
                           description: Auth defines the information necessary to authenticate against Yandex.Cloud
+                          maxProperties: 1
+                          minProperties: 1
                           properties:
                             authorizedKeySecretRef:
                               description: The authorized key used for authentication
@@ -6893,7 +6897,7 @@ spec:
                                   type: string
                               type: object
                             jwt:
-                              description: Wlif authorization
+                              description: JWT authorization
                               properties:
                                 serviceAccountRef:
                                   description: Kubernetes service account reference
@@ -17670,6 +17674,8 @@ spec:
                           type: string
                         auth:
                           description: Auth defines the information necessary to authenticate against Yandex.Cloud
+                          maxProperties: 1
+                          minProperties: 1
                           properties:
                             authorizedKeySecretRef:
                               description: The authorized key used for authentication
@@ -17698,7 +17704,7 @@ spec:
                                   type: string
                               type: object
                             jwt:
-                              description: Wlif authorization
+                              description: JWT authorization
                               properties:
                                 serviceAccountRef:
                                   description: Kubernetes service account reference
@@ -17797,6 +17803,8 @@ spec:
                           type: string
                         auth:
                           description: Auth defines the information necessary to authenticate against Yandex.Cloud
+                          maxProperties: 1
+                          minProperties: 1
                           properties:
                             authorizedKeySecretRef:
                               description: The authorized key used for authentication
@@ -17825,7 +17833,7 @@ spec:
                                   type: string
                               type: object
                             jwt:
-                              description: Wlif authorization
+                              description: JWT authorization
                               properties:
                                 serviceAccountRef:
                                   description: Kubernetes service account reference

@@ -59,7 +59,7 @@ func TestNewClient(t *testing.T) {
 			Provider: &esv1.SecretStoreProvider{
 				YandexCertificateManager: &esv1.YandexCertificateManagerProvider{
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Key:  authorizedKeySecretKey,
 							Name: authorizedKeySecretName,
 						},
@@ -969,7 +969,7 @@ func TestGetSecretWithInvalidFetchingPolicy(t *testing.T) {
 				YandexCertificateManager: &esv1.YandexCertificateManagerProvider{
 					APIEndpoint: "",
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Name: authorizedKeySecretName,
 							Key:  authorizedKeySecretKey,
 						},
@@ -995,7 +995,7 @@ func newCertificateManagerProvider(clock clock.Clock, fakeCertificateManagerServ
 		ctrl.Log.WithName("provider").WithName("yandex").WithName("certificatemanager"),
 		clock,
 		adaptInput,
-		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, iamToken *common.IamToken) (common.SecretGetter, error) {
+		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (common.SecretGetter, error) {
 			return newCertificateManagerSecretGetter(client.NewFakeCertificateManagerClient(fakeCertificateManagerServer))
 		},
 		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*common.IamToken, error) {
@@ -1015,7 +1015,7 @@ func newYandexCertificateManagerSecretStore(apiEndpoint, namespace, authorizedKe
 				YandexCertificateManager: &esv1.YandexCertificateManagerProvider{
 					APIEndpoint: apiEndpoint,
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Name: authorizedKeySecretName,
 							Key:  authorizedKeySecretKey,
 						},
@@ -1036,7 +1036,7 @@ func newYandexCertificateManagerSecretStoreWithFetchByName(apiEndpoint, namespac
 				YandexCertificateManager: &esv1.YandexCertificateManagerProvider{
 					APIEndpoint: apiEndpoint,
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Name: authorizedKeySecretName,
 							Key:  authorizedKeySecretKey,
 						},
@@ -1062,7 +1062,7 @@ func newYandexCertificateManagerSecretStoreWithFetchByID(apiEndpoint, namespace,
 				YandexCertificateManager: &esv1.YandexCertificateManagerProvider{
 					APIEndpoint: apiEndpoint,
 					Auth: esv1.YandexAuth{
-						AuthorizedKey: esmeta.SecretKeySelector{
+						AuthorizedKey: &esmeta.SecretKeySelector{
 							Name: authorizedKeySecretName,
 							Key:  authorizedKeySecretKey,
 						},

@@ -29,14 +29,13 @@ type grpcLockboxClient struct {
 	lockboxPayloadClient api.PayloadServiceClient
 }
 
-func NewGrpcLockboxClient(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, iamToken *common.IamToken) (LockboxClient, error) {
+func NewGrpcLockboxClient(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (LockboxClient, error) {
 	conn, err := common.NewGrpcConnection(
 		ctx,
 		apiEndpoint,
 		"lockbox-payload", // taken from https://api.cloud.yandex.net/endpoints
 		authorizedKey,
 		caCertificate,
-		iamToken,
 	)
 	if err != nil {
 		return nil, err

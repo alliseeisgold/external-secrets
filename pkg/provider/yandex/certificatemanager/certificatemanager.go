@@ -39,15 +39,15 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	storeSpecYandexCertificateManager := storeSpec.Provider.YandexCertificateManager
 
 	var authorizedKey *esmeta.SecretKeySelector
-	if storeSpecYandexCertificateManager.Auth.AuthorizedKey.Name != "" {
-		authorizedKey = &storeSpecYandexCertificateManager.Auth.AuthorizedKey
+	if storeSpecYandexCertificateManager.Auth.AuthorizedKey != nil {
+		authorizedKey = storeSpecYandexCertificateManager.Auth.AuthorizedKey
 	}
 
 	var yandexIamServiceAccountID string
 	var serviceAccountRef *esmeta.ServiceAccountSelector
-	if storeSpecYandexCertificateManager.Auth.WlifAuth != nil {
-		yandexIamServiceAccountID = storeSpecYandexCertificateManager.Auth.WlifAuth.YandexIamServiceAccountID
-		serviceAccountRef = &storeSpecYandexCertificateManager.Auth.WlifAuth.ServiceAccountRef
+	if storeSpecYandexCertificateManager.Auth.JwtAuth != nil {
+		yandexIamServiceAccountID = storeSpecYandexCertificateManager.Auth.JwtAuth.YandexIamServiceAccountID
+		serviceAccountRef = &storeSpecYandexCertificateManager.Auth.JwtAuth.ServiceAccountRef
 	}
 
 	var caCertificate *esmeta.SecretKeySelector
@@ -86,8 +86,8 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	}, nil
 }
 
-func newSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte, iamToken *common.IamToken) (common.SecretGetter, error) {
-	grpcClient, err := client.NewGrpcCertificateManagerClient(ctx, apiEndpoint, authorizedKey, caCertificate, iamToken)
+func newSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (common.SecretGetter, error) {
+	grpcClient, err := client.NewGrpcCertificateManagerClient(ctx, apiEndpoint, authorizedKey, caCertificate)
 	if err != nil {
 		return nil, err
 	}
