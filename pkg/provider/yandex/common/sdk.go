@@ -16,14 +16,10 @@ package common
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"time"
 
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/endpoint"
-	ycsdk "github.com/yandex-cloud/go-sdk"
-	"github.com/yandex-cloud/go-sdk/iamkey"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -34,94 +30,22 @@ func NewGrpcConnection(
 	ctx context.Context,
 	apiEndpoint string,
 	apiEndpointID string, // an ID from https://api.cloud.yandex.net/endpoints
-	authorizedKey *iamkey.Key,
 	caCertificate []byte,
 ) (*grpc.ClientConn, error) {
-	tlsConfig, err := tlsConfig(caCertificate)
+	conn, err := createGrpcConnection(apiEndpoint, caCertificate)
 	if err != nil {
 		return nil, err
 	}
-
-	conn, err := createGrpcClient(apiEndpoint, tlsConfig)
-	if err != nil {
-		return nil, err
-	}
-
 	defer conn.Close()
 
-	serviceAPIEndpoint, err := endpoint.NewApiEndpointServiceClient(conn).Get(context.Background(), &endpoint.GetApiEndpointRequest{
+	serviceAPIEndpoint, err := endpoint.NewApiEndpointServiceClient(conn).Get(ctx, &endpoint.GetApiEndpointRequest{
 		ApiEndpointId: apiEndpointID,
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	return createGrpcClient(serviceAPIEndpoint.Address, tlsConfig)
-}
-
-// Exchanges the given authorized key to an IAM token.
-func NewIamToken(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*IamToken, error) {
-	tlsConfig, err := tlsConfig(caCertificate)
-	if err != nil {
-		return nil, err
-	}
-
-	sdk, err := buildSDK(ctx, apiEndpoint, authorizedKey, tlsConfig)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = closeSDK(ctx, sdk)
-	}()
-
-	iamToken, err := sdk.CreateIAMToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &IamToken{Token: iamToken.IamToken, ExpiresAt: iamToken.ExpiresAt.AsTime()}, nil
-}
-
-func tlsConfig(caCertificate []byte) (*tls.Config, error) {
-	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
-	if caCertificate != nil {
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM(caCertificate)
-		if !ok {
-			return nil, errors.New("unable to read trusted CA certificates")
-		}
-		tlsConfig.RootCAs = caCertPool
-	}
-	return tlsConfig, nil
-}
-
-func buildSDK(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, tlsConfig *tls.Config) (*ycsdk.SDK, error) {
-	var creds ycsdk.Credentials
-	if authorizedKey != nil {
-		var err error
-		creds, err = ycsdk.ServiceAccountKey(authorizedKey)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		creds = ycsdk.InstanceServiceAccount()
-	}
-
-	sdk, err := ycsdk.Build(ctx, ycsdk.Config{
-		Credentials: creds,
-		Endpoint:    apiEndpoint,
-		TLSConfig:   tlsConfig,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return sdk, nil
-}
-
-func closeSDK(ctx context.Context, sdk *ycsdk.SDK) error {
-	return sdk.Shutdown(ctx)
+	return createGrpcConnection(serviceAPIEndpoint.Address, caCertificate)
 }
 
 type PerRPCCredentials struct {
@@ -136,7 +60,15 @@ func (PerRPCCredentials) RequireTransportSecurity() bool {
 	return true
 }
 
-func createGrpcClient(apiEndpoint string, tlsConfig *tls.Config) (*grpc.ClientConn, error) {
+func createGrpcConnection(apiEndpoint string, caCertificate []byte) (*grpc.ClientConn, error) {
+	tlsConfig, err := iamtoken.TlsConfig(caCertificate)
+	if err != nil {
+		return nil, err
+	}
+
+	if apiEndpoint == "" {
+		apiEndpoint = "api.cloud.yandex.net:443"
+	}
 	// Until gRPC proposal A61 is implemented in grpc-go, default gRPC name resolver (dns)
 	// is incompatible with dualstack backends, and YC API backends are dualstack.
 	// However, if passthrough resolver is used instead, grpc-go won't do any name resolution
@@ -145,9 +77,6 @@ func createGrpcClient(apiEndpoint string, tlsConfig *tls.Config) (*grpc.ClientCo
 	// So we explicitly set gRPC resolver to `passthrough` to match `ycsdk`s behavior,
 	// which uses `passthrough` resolver implicitly by using deprecated grpc.DialContext
 	// instead of grpc.NewClient used here
-	if apiEndpoint == "" {
-		apiEndpoint = "api.cloud.yandex.net:443"
-	}
 	target := "passthrough:///" + apiEndpoint
 	return grpc.NewClient(target,
 		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),

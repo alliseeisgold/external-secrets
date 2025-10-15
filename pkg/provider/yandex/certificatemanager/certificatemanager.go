@@ -19,14 +19,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/yandex-cloud/go-sdk/iamkey"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	esv1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1"
-	esmeta "github.com/external-secrets/external-secrets/apis/meta/v1"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/certificatemanager/client"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
 )
 
 var log = ctrl.Log.WithName("provider").WithName("yandex").WithName("certificatemanager")
@@ -38,56 +37,16 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	}
 	storeSpecYandexCertificateManager := storeSpec.Provider.YandexCertificateManager
 
-	var authorizedKey *esmeta.SecretKeySelector
-	if storeSpecYandexCertificateManager.Auth.AuthorizedKey != nil {
-		authorizedKey = storeSpecYandexCertificateManager.Auth.AuthorizedKey
-	}
-
-	var yandexIamServiceAccountID string
-	var serviceAccountRef *esmeta.ServiceAccountSelector
-	if storeSpecYandexCertificateManager.Auth.JwtAuth != nil {
-		yandexIamServiceAccountID = storeSpecYandexCertificateManager.Auth.JwtAuth.YandexIamServiceAccountID
-		serviceAccountRef = &storeSpecYandexCertificateManager.Auth.JwtAuth.ServiceAccountRef
-	}
-
-	var caCertificate *esmeta.SecretKeySelector
-	if storeSpecYandexCertificateManager.CAProvider != nil {
-		caCertificate = &storeSpecYandexCertificateManager.CAProvider.Certificate
-	}
-
-	var resourceKeyType common.ResourceKeyType
-	var folderID string
-	policy := storeSpecYandexCertificateManager.FetchingPolicy
-	if policy != nil {
-		switch {
-		case policy.ByName != nil:
-			if policy.ByName.FolderID == "" {
-				return nil, errors.New("folderID is required when fetching policy is 'byName'")
-			}
-			resourceKeyType = common.ResourceKeyTypeName
-			folderID = policy.ByName.FolderID
-
-		case policy.ByID != nil:
-			resourceKeyType = common.ResourceKeyTypeId
-
-		default:
-			return nil, errors.New("invalid Yandex Certificate Manager SecretStore: requires either 'byName' or 'byID' policy")
-		}
-	}
-
 	return &common.SecretsClientInput{
-		APIEndpoint:               storeSpecYandexCertificateManager.APIEndpoint,
-		AuthorizedKey:             authorizedKey,
-		YandexIamServiceAccountID: yandexIamServiceAccountID,
-		ServiceAccountRef:         serviceAccountRef,
-		CACertificate:             caCertificate,
-		ResourceKeyType:           resourceKeyType,
-		FolderID:                  folderID,
+		APIEndpoint:    storeSpecYandexCertificateManager.APIEndpoint,
+		Auth:           &storeSpecYandexCertificateManager.Auth,
+		CAProvider:     storeSpecYandexCertificateManager.CAProvider,
+		FetchingPolicy: storeSpecYandexCertificateManager.FetchingPolicy,
 	}, nil
 }
 
-func newSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (common.SecretGetter, error) {
-	grpcClient, err := client.NewGrpcCertificateManagerClient(ctx, apiEndpoint, authorizedKey, caCertificate)
+func newSecretGetter(ctx context.Context, apiEndpoint string, caCertificate []byte) (common.SecretGetter, error) {
+	grpcClient, err := client.NewGrpcCertificateManagerClient(ctx, apiEndpoint, caCertificate)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +59,7 @@ func init() {
 		clock.NewRealClock(),
 		adaptInput,
 		newSecretGetter,
-		common.NewIamToken,
+		iamtoken.InitializeIamTokenCreator,
 		time.Hour,
 	)
 

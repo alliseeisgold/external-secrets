@@ -27,8 +27,8 @@ import (
 	api "github.com/yandex-cloud/go-genproto/yandex/cloud/lockbox/v1"
 	"github.com/yandex-cloud/go-sdk/iamkey"
 
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
 )
 
 // Fake implementation of LockboxClient.
@@ -131,11 +131,11 @@ func (s *FakeLockboxServer) AddVersion(secretID string, entries ...*api.Payload_
 	return versionID
 }
 
-func (s *FakeLockboxServer) NewIamToken(authorizedKey *iamkey.Key) *common.IamToken {
+func (s *FakeLockboxServer) NewIamToken(authorizedKey *iamkey.Key) *iamtoken.IamToken {
 	token := uuid.NewString()
 	expiresAt := s.clock.CurrentTime().Add(s.tokenExpirationDuration)
 	s.tokenMap[tokenKey{token}] = tokenValue{authorizedKey, expiresAt}
-	return &common.IamToken{Token: token, ExpiresAt: expiresAt}
+	return &iamtoken.IamToken{Token: token, ExpiresAt: expiresAt}
 }
 
 func (s *FakeLockboxServer) getEntries(iamToken, secretID, versionID string) ([]*api.Payload_Entry, error) {

@@ -18,7 +18,6 @@ import (
 	"context"
 
 	api "github.com/yandex-cloud/go-genproto/yandex/cloud/certificatemanager/v1"
-	"github.com/yandex-cloud/go-sdk/iamkey"
 	"google.golang.org/grpc"
 
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
@@ -29,12 +28,11 @@ type grpcCertificateManagerClient struct {
 	certificateContentServiceClient api.CertificateContentServiceClient
 }
 
-func NewGrpcCertificateManagerClient(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (CertificateManagerClient, error) {
+func NewGrpcCertificateManagerClient(ctx context.Context, apiEndpoint string, caCertificate []byte) (CertificateManagerClient, error) {
 	conn, err := common.NewGrpcConnection(
 		ctx,
 		apiEndpoint,
 		"certificate-manager-data", // taken from https://api.cloud.yandex.net/endpoints
-		authorizedKey,
 		caCertificate,
 	)
 	if err != nil {

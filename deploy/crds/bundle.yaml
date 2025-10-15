@@ -6798,6 +6798,9 @@ spec:
                                   required:
                                     - name
                                   type: object
+                                tokenUrl:
+                                  description: URL for exchanging k8s service account token to Yandex IAM token
+                                  type: string
                                 yandexIamServiceAccountID:
                                   description: Yandex Cloud service account ID
                                   type: string
@@ -6927,6 +6930,9 @@ spec:
                                   required:
                                     - name
                                   type: object
+                                tokenUrl:
+                                  description: URL for exchanging k8s service account token to Yandex IAM token
+                                  type: string
                                 yandexIamServiceAccountID:
                                   description: Yandex Cloud service account ID
                                   type: string
@@ -17734,6 +17740,9 @@ spec:
                                   required:
                                     - name
                                   type: object
+                                tokenUrl:
+                                  description: URL for exchanging k8s service account token to Yandex IAM token
+                                  type: string
                                 yandexIamServiceAccountID:
                                   description: Yandex Cloud service account ID
                                   type: string
@@ -17863,6 +17872,9 @@ spec:
                                   required:
                                     - name
                                   type: object
+                                tokenUrl:
+                                  description: URL for exchanging k8s service account token to Yandex IAM token
+                                  type: string
                                 yandexIamServiceAccountID:
                                   description: Yandex Cloud service account ID
                                   type: string

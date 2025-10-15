@@ -56,4 +56,8 @@ type JwtAuth struct {
 
 	// Kubernetes service account reference
 	ServiceAccountRef esmeta.ServiceAccountSelector `json:"serviceAccountRef"`
+
+	// URL for exchanging k8s service account token to Yandex IAM token
+	// +optional
+	TokenUrl string `json:"tokenUrl,omitempty"`
 }

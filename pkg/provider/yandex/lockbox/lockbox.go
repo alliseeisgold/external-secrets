@@ -1,15 +1,15 @@
 /*
-	Licensed under the Apache License, Version 2.0 (the "License");
-	you may not use this file except in compliance with the License.
-	You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-		http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
-	Unless required by applicable law or agreed to in writing, software
-	distributed under the License is distributed on an "AS IS" BASIS,
-	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	See the License for the specific language governing permissions and
-	limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 package lockbox
@@ -19,13 +19,12 @@ import (
 	"errors"
 	"time"
 
-	"github.com/yandex-cloud/go-sdk/iamkey"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	esv1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1"
-	esmeta "github.com/external-secrets/external-secrets/apis/meta/v1"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/lockbox/client"
 )
 
@@ -38,56 +37,16 @@ func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
 	}
 	storeSpecYandexLockbox := storeSpec.Provider.YandexLockbox
 
-	var authorizedKey *esmeta.SecretKeySelector
-	if storeSpecYandexLockbox.Auth.AuthorizedKey != nil {
-		authorizedKey = storeSpecYandexLockbox.Auth.AuthorizedKey
-	}
-
-	var yandexIamServiceAccountID string
-	var serviceAccountRef *esmeta.ServiceAccountSelector
-	if storeSpecYandexLockbox.Auth.JwtAuth != nil {
-		yandexIamServiceAccountID = storeSpecYandexLockbox.Auth.JwtAuth.YandexIamServiceAccountID
-		serviceAccountRef = &storeSpecYandexLockbox.Auth.JwtAuth.ServiceAccountRef
-	}
-
-	var caCertificate *esmeta.SecretKeySelector
-	if storeSpecYandexLockbox.CAProvider != nil {
-		caCertificate = &storeSpecYandexLockbox.CAProvider.Certificate
-	}
-
-	var resourceKeyType common.ResourceKeyType
-	var folderID string
-	policy := storeSpecYandexLockbox.FetchingPolicy
-	if policy != nil {
-		switch {
-		case policy.ByName != nil:
-			if policy.ByName.FolderID == "" {
-				return nil, errors.New("folderID is required when fetching policy is 'byName'")
-			}
-			resourceKeyType = common.ResourceKeyTypeName
-			folderID = policy.ByName.FolderID
-
-		case policy.ByID != nil:
-			resourceKeyType = common.ResourceKeyTypeId
-
-		default:
-			return nil, errors.New("invalid Yandex Lockbox SecretStore: requires either 'byName' or 'byID' policy")
-		}
-	}
-
 	return &common.SecretsClientInput{
-		APIEndpoint:               storeSpecYandexLockbox.APIEndpoint,
-		AuthorizedKey:             authorizedKey,
-		YandexIamServiceAccountID: yandexIamServiceAccountID,
-		ServiceAccountRef:         serviceAccountRef,
-		CACertificate:             caCertificate,
-		ResourceKeyType:           resourceKeyType,
-		FolderID:                  folderID,
+		APIEndpoint:    storeSpecYandexLockbox.APIEndpoint,
+		Auth:           &storeSpecYandexLockbox.Auth,
+		CAProvider:     storeSpecYandexLockbox.CAProvider,
+		FetchingPolicy: storeSpecYandexLockbox.FetchingPolicy,
 	}, nil
 }
 
-func newSecretGetter(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (common.SecretGetter, error) {
-	lockboxClient, err := client.NewGrpcLockboxClient(ctx, apiEndpoint, authorizedKey, caCertificate)
+func newSecretGetter(ctx context.Context, apiEndpoint string, caCertificate []byte) (common.SecretGetter, error) {
+	lockboxClient, err := client.NewGrpcLockboxClient(ctx, apiEndpoint, caCertificate)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +59,7 @@ func init() {
 		clock.NewRealClock(),
 		adaptInput,
 		newSecretGetter,
-		common.NewIamToken,
+		iamtoken.InitializeIamTokenCreator,
 		time.Hour,
 	)
 
