@@ -24,20 +24,19 @@ import (
 	esv1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/lockbox/client"
 )
 
 var log = ctrl.Log.WithName("provider").WithName("yandex").WithName("lockbox")
 
-func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
+func adaptInput(store esv1.GenericStore) (*common.YandexCloudProviderInput, error) {
 	storeSpec := store.GetSpec()
 	if storeSpec == nil || storeSpec.Provider == nil || storeSpec.Provider.YandexLockbox == nil {
 		return nil, errors.New("received invalid Yandex Lockbox SecretStore resource")
 	}
 	storeSpecYandexLockbox := storeSpec.Provider.YandexLockbox
 
-	return &common.SecretsClientInput{
+	return &common.YandexCloudProviderInput{
 		APIEndpoint:    storeSpecYandexLockbox.APIEndpoint,
 		Auth:           &storeSpecYandexLockbox.Auth,
 		CAProvider:     storeSpecYandexLockbox.CAProvider,
@@ -59,7 +58,7 @@ func init() {
 		clock.NewRealClock(),
 		adaptInput,
 		newSecretGetter,
-		iamtoken.InitializeIamTokenCreator,
+		common.NewIamTokenCreator,
 		time.Hour,
 	)
 

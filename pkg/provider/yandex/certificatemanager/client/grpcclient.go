@@ -17,10 +17,9 @@ package client
 import (
 	"context"
 
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/config"
 	api "github.com/yandex-cloud/go-genproto/yandex/cloud/certificatemanager/v1"
 	"google.golang.org/grpc"
-
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
 )
 
 // Real/gRPC implementation of CertificateManagerClient.
@@ -29,7 +28,7 @@ type grpcCertificateManagerClient struct {
 }
 
 func NewGrpcCertificateManagerClient(ctx context.Context, apiEndpoint string, caCertificate []byte) (CertificateManagerClient, error) {
-	conn, err := common.NewGrpcConnection(
+	conn, err := config.NewGrpcConnection(
 		ctx,
 		apiEndpoint,
 		"certificate-manager-data", // taken from https://api.cloud.yandex.net/endpoints
@@ -48,7 +47,7 @@ func (c *grpcCertificateManagerClient) GetCertificateContent(ctx context.Context
 			CertificateId: certificateID,
 			VersionId:     versionID,
 		},
-		grpc.PerRPCCredentials(common.PerRPCCredentials{IamToken: iamToken}),
+		grpc.PerRPCCredentials(config.PerRPCCredentials{IamToken: iamToken}),
 	)
 	if err != nil {
 		return nil, err
@@ -68,7 +67,7 @@ func (c *grpcCertificateManagerClient) GetExCertificateContent(ctx context.Conte
 			},
 			VersionId: versionID,
 		},
-		grpc.PerRPCCredentials(common.PerRPCCredentials{IamToken: iamToken}),
+		grpc.PerRPCCredentials(config.PerRPCCredentials{IamToken: iamToken}),
 	)
 	if err != nil {
 		return nil, err

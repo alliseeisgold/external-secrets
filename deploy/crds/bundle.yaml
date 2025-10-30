@@ -6770,6 +6770,9 @@ spec:
                             jwt:
                               description: JWT authorization
                               properties:
+                                iamServiceAccountID:
+                                  description: Yandex Cloud service account ID
+                                  type: string
                                 serviceAccountRef:
                                   description: Kubernetes service account reference
                                   properties:
@@ -6801,12 +6804,9 @@ spec:
                                 tokenUrl:
                                   description: URL for exchanging k8s service account token to Yandex IAM token
                                   type: string
-                                yandexIamServiceAccountID:
-                                  description: Yandex Cloud service account ID
-                                  type: string
                               required:
+                                - iamServiceAccountID
                                 - serviceAccountRef
-                                - yandexIamServiceAccountID
                               type: object
                           type: object
                         caProvider:
@@ -6902,6 +6902,9 @@ spec:
                             jwt:
                               description: JWT authorization
                               properties:
+                                iamServiceAccountID:
+                                  description: Yandex Cloud service account ID
+                                  type: string
                                 serviceAccountRef:
                                   description: Kubernetes service account reference
                                   properties:
@@ -6933,12 +6936,9 @@ spec:
                                 tokenUrl:
                                   description: URL for exchanging k8s service account token to Yandex IAM token
                                   type: string
-                                yandexIamServiceAccountID:
-                                  description: Yandex Cloud service account ID
-                                  type: string
                               required:
+                                - iamServiceAccountID
                                 - serviceAccountRef
-                                - yandexIamServiceAccountID
                               type: object
                           type: object
                         caProvider:
@@ -17712,6 +17712,9 @@ spec:
                             jwt:
                               description: JWT authorization
                               properties:
+                                iamServiceAccountID:
+                                  description: Yandex Cloud service account ID
+                                  type: string
                                 serviceAccountRef:
                                   description: Kubernetes service account reference
                                   properties:
@@ -17743,12 +17746,9 @@ spec:
                                 tokenUrl:
                                   description: URL for exchanging k8s service account token to Yandex IAM token
                                   type: string
-                                yandexIamServiceAccountID:
-                                  description: Yandex Cloud service account ID
-                                  type: string
                               required:
+                                - iamServiceAccountID
                                 - serviceAccountRef
-                                - yandexIamServiceAccountID
                               type: object
                           type: object
                         caProvider:
@@ -17844,6 +17844,9 @@ spec:
                             jwt:
                               description: JWT authorization
                               properties:
+                                iamServiceAccountID:
+                                  description: Yandex Cloud service account ID
+                                  type: string
                                 serviceAccountRef:
                                   description: Kubernetes service account reference
                                   properties:
@@ -17875,12 +17878,9 @@ spec:
                                 tokenUrl:
                                   description: URL for exchanging k8s service account token to Yandex IAM token
                                   type: string
-                                yandexIamServiceAccountID:
-                                  description: Yandex Cloud service account ID
-                                  type: string
                               required:
+                                - iamServiceAccountID
                                 - serviceAccountRef
-                                - yandexIamServiceAccountID
                               type: object
                           type: object
                         caProvider:

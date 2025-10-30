@@ -12,14 +12,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package config
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"time"
 
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/endpoint"
+	ycsdk "github.com/yandex-cloud/go-sdk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -48,27 +51,12 @@ func NewGrpcConnection(
 	return createGrpcConnection(serviceAPIEndpoint.Address, caCertificate)
 }
 
-type PerRPCCredentials struct {
-	IamToken string
-}
-
-func (t PerRPCCredentials) GetRequestMetadata(_ context.Context, _ ...string) (map[string]string, error) {
-	return map[string]string{"Authorization": "Bearer " + t.IamToken}, nil
-}
-
-func (PerRPCCredentials) RequireTransportSecurity() bool {
-	return true
-}
-
 func createGrpcConnection(apiEndpoint string, caCertificate []byte) (*grpc.ClientConn, error) {
-	tlsConfig, err := iamtoken.TlsConfig(caCertificate)
+	tlsConfig, err := TlsConfig(caCertificate)
 	if err != nil {
 		return nil, err
 	}
 
-	if apiEndpoint == "" {
-		apiEndpoint = "api.cloud.yandex.net:443"
-	}
 	// Until gRPC proposal A61 is implemented in grpc-go, default gRPC name resolver (dns)
 	// is incompatible with dualstack backends, and YC API backends are dualstack.
 	// However, if passthrough resolver is used instead, grpc-go won't do any name resolution
@@ -87,4 +75,51 @@ func createGrpcConnection(apiEndpoint string, caCertificate []byte) (*grpc.Clien
 		}),
 		grpc.WithUserAgent("external-secrets"),
 	)
+}
+
+type PerRPCCredentials struct {
+	IamToken string
+}
+
+func (t PerRPCCredentials) GetRequestMetadata(_ context.Context, _ ...string) (map[string]string, error) {
+	return map[string]string{"Authorization": "Bearer " + t.IamToken}, nil
+}
+
+func (PerRPCCredentials) RequireTransportSecurity() bool {
+	return true
+}
+
+func BuildSDK(ctx context.Context, apiEndpoint string, creds ycsdk.Credentials, caCertificate []byte) (*ycsdk.SDK, error) {
+	tlsConfig, err := TlsConfig(caCertificate)
+	if err != nil {
+		return nil, err
+	}
+
+	sdk, err := ycsdk.Build(ctx, ycsdk.Config{
+		Credentials: creds,
+		Endpoint:    apiEndpoint,
+		TLSConfig:   tlsConfig,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return sdk, nil
+}
+
+func CloseSDK(ctx context.Context, sdk *ycsdk.SDK) error {
+	return sdk.Shutdown(ctx)
+}
+
+func TlsConfig(caCertificate []byte) (*tls.Config, error) {
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
+	if caCertificate != nil {
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM(caCertificate)
+		if !ok {
+			return nil, errors.New("unable to read trusted CA certificates")
+		}
+		tlsConfig.RootCAs = caCertPool
+	}
+	return tlsConfig, nil
 }

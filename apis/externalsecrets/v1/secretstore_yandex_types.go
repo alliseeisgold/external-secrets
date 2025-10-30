@@ -27,7 +27,7 @@ type YandexAuth struct {
 
 	// JWT authorization
 	// +optional
-	JwtAuth *JwtAuth `json:"jwt,omitempty"`
+	Jwt *Jwt `json:"jwt,omitempty"`
 }
 
 type YandexCAProvider struct {
@@ -50,9 +50,9 @@ type FetchingPolicy struct {
 	ByName *ByName `json:"byName,omitempty"`
 }
 
-type JwtAuth struct {
+type Jwt struct {
 	// Yandex Cloud service account ID
-	YandexIamServiceAccountID string `json:"yandexIamServiceAccountID"`
+	IamServiceAccountID string `json:"iamServiceAccountID"`
 
 	// Kubernetes service account reference
 	ServiceAccountRef esmeta.ServiceAccountSelector `json:"serviceAccountRef"`

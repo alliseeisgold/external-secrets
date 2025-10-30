@@ -25,19 +25,18 @@ import (
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/certificatemanager/client"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
 )
 
 var log = ctrl.Log.WithName("provider").WithName("yandex").WithName("certificatemanager")
 
-func adaptInput(store esv1.GenericStore) (*common.SecretsClientInput, error) {
+func adaptInput(store esv1.GenericStore) (*common.YandexCloudProviderInput, error) {
 	storeSpec := store.GetSpec()
 	if storeSpec == nil || storeSpec.Provider == nil || storeSpec.Provider.YandexCertificateManager == nil {
 		return nil, errors.New("received invalid Yandex Certificate Manager SecretStore resource")
 	}
 	storeSpecYandexCertificateManager := storeSpec.Provider.YandexCertificateManager
 
-	return &common.SecretsClientInput{
+	return &common.YandexCloudProviderInput{
 		APIEndpoint:    storeSpecYandexCertificateManager.APIEndpoint,
 		Auth:           &storeSpecYandexCertificateManager.Auth,
 		CAProvider:     storeSpecYandexCertificateManager.CAProvider,
@@ -59,7 +58,7 @@ func init() {
 		clock.NewRealClock(),
 		adaptInput,
 		newSecretGetter,
-		iamtoken.InitializeIamTokenCreator,
+		common.NewIamTokenCreator,
 		time.Hour,
 	)
 
