@@ -35,7 +35,7 @@ import (
 	esmeta "github.com/external-secrets/external-secrets/apis/meta/v1"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtokencreator"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/lockbox/client"
 )
 
@@ -977,7 +977,7 @@ func newLockboxProvider(clock clock.Clock, fakeLockboxServer *client.FakeLockbox
 		func(ctx context.Context, apiEndpoint string, caCertificate []byte) (common.SecretGetter, error) {
 			return newLockboxSecretGetter(client.NewFakeLockboxClient(fakeLockboxServer))
 		},
-		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*iamtoken.IamToken, error) {
+		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*iamtokencreator.IamTokenCreator, error) {
 			return fakeLockboxServer.NewIamToken(authorizedKey), nil
 		},
 		0,

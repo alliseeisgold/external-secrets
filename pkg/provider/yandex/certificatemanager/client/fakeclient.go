@@ -27,7 +27,7 @@ import (
 	"github.com/yandex-cloud/go-sdk/iamkey"
 
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtokencreator"
 )
 
 // Fake implementation of CertificateManagerClient.
@@ -131,11 +131,11 @@ func (s *FakeCertificateManagerServer) AddVersion(certificateID string, content 
 	return versionID
 }
 
-func (s *FakeCertificateManagerServer) NewIamToken(authorizedKey *iamkey.Key) *iamtoken.IamToken {
+func (s *FakeCertificateManagerServer) NewIamToken(authorizedKey *iamkey.Key) *iamtokencreator.IamToken {
 	token := uuid.NewString()
 	expiresAt := s.clock.CurrentTime().Add(s.tokenExpirationDuration)
 	s.tokenMap[tokenKey{token}] = tokenValue{authorizedKey, expiresAt}
-	return &iamtoken.IamToken{Token: token, ExpiresAt: expiresAt}
+	return &iamtokencreator.IamToken{Token: token, ExpiresAt: expiresAt}
 }
 
 func (s *FakeCertificateManagerServer) getCertificateContent(iamToken, certificateID, versionID string) (*api.GetCertificateContentResponse, error) {

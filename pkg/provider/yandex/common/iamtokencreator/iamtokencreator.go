@@ -1,4 +1,4 @@
-package iamtoken
+package iamtokencreator
 
 import (
 	"context"
@@ -14,4 +14,8 @@ type IamTokenCreator interface {
 type IamToken struct {
 	Token     string
 	ExpiresAt time.Time
+}
+
+type CacheKey interface {
+	ToLoggableString() string
 }

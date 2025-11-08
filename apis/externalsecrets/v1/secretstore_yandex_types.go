@@ -25,9 +25,13 @@ type YandexAuth struct {
 	// +optional
 	AuthorizedKey *esmeta.SecretKeySelector `json:"authorizedKeySecretRef,omitempty"`
 
-	// JWT authorization
+	// JWT authentication
 	// +optional
 	Jwt *Jwt `json:"jwt,omitempty"`
+
+	// Instance Service Account authentication
+	// +optional
+	InstanceSA *InstanceSA `json:"instanceSA"`
 }
 
 type YandexCAProvider struct {
@@ -57,7 +61,10 @@ type Jwt struct {
 	// Kubernetes service account reference
 	ServiceAccountRef esmeta.ServiceAccountSelector `json:"serviceAccountRef"`
 
-	// URL for exchanging k8s service account token to Yandex IAM token
+	// Endpoint for exchanging k8s service account token to Yandex IAM token
 	// +optional
-	TokenUrl string `json:"tokenUrl,omitempty"`
+	TokenExchangeEndpoint string `json:"tokenExchangeEndpoint,omitempty"`
+}
+
+type InstanceSA struct {
 }

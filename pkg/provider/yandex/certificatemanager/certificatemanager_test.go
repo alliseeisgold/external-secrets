@@ -36,7 +36,7 @@ import (
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/certificatemanager/client"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
 	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtokencreator"
 )
 
 const (
@@ -1000,7 +1000,7 @@ func newCertificateManagerProvider(clock clock.Clock, fakeCertificateManagerServ
 		func(ctx context.Context, apiEndpoint string, caCertificate []byte) (common.SecretGetter, error) {
 			return newCertificateManagerSecretGetter(client.NewFakeCertificateManagerClient(fakeCertificateManagerServer))
 		},
-		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*iamtoken.IamToken, error) {
+		func(ctx context.Context, apiEndpoint string, authorizedKey *iamkey.Key, caCertificate []byte) (*iamtokencreator.IamTokenCreator, error) {
 			return fakeCertificateManagerServer.NewIamToken(authorizedKey), nil
 		},
 		0,

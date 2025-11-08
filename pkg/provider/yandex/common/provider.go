@@ -32,7 +32,7 @@ import (
 	esv1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1"
 	esmeta "github.com/external-secrets/external-secrets/apis/meta/v1"
 	clock2 "github.com/external-secrets/external-secrets/pkg/provider/yandex/common/clock"
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtoken"
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/iamtokencreator"
 	"github.com/external-secrets/external-secrets/pkg/utils/resolvers"
 	ctrlcfg "sigs.k8s.io/controller-runtime/pkg/client/config"
 )
@@ -52,7 +52,7 @@ type YandexCloudProvider struct {
 
 	secretGetteMap       map[string]SecretGetter // apiEndpoint -> SecretGetter
 	secretGetterMapMutex sync.Mutex
-	iamTokenMap          map[any]*iamtoken.IamToken // any of two structs: authorizedKeyAuthCacheKey or jwtAuthCacheKey can be used as a key
+	iamTokenMap          map[iamtokencreator.CacheKey]*iamtokencreator.IamToken
 	iamTokenMapMutex     sync.Mutex
 }
 
@@ -72,7 +72,7 @@ func InitYandexCloudProvider(
 		newSecretGetterFunc:    newSecretGetterFunc,
 		newIamTokenCreatorFunc: newIamTokenCreatorFunc,
 		secretGetteMap:         make(map[string]SecretGetter),
-		iamTokenMap:            make(map[any]*iamtoken.IamToken),
+		iamTokenMap:            make(map[iamtokencreator.CacheKey]*iamtokencreator.IamToken),
 	}
 
 	if iamTokenCleanupDelay > 0 {
@@ -89,7 +89,7 @@ func InitYandexCloudProvider(
 
 type NewSecretSetterFunc func()
 type AdaptInputFunc func(store esv1.GenericStore) (*YandexCloudProviderInput, error)
-type NewIamTokenCreatorFunc func(ctx context.Context, kube kclient.Client, storeKind string, namespace string, auth *esv1.YandexAuth, logger logr.Logger, clock clock2.Clock) (iamtoken.IamTokenCreator, error)
+type NewIamTokenCreatorFunc func(ctx context.Context, kube kclient.Client, storeKind string, namespace string, auth *esv1.YandexAuth, logger logr.Logger, clock clock2.Clock) (iamtokencreator.IamTokenCreator, error)
 type NewSecretGetterFunc func(ctx context.Context, apiEndpoint string, caCertificate []byte) (SecretGetter, error)
 
 type YandexCloudProviderInput struct {
@@ -168,7 +168,6 @@ func (p *YandexCloudProvider) NewClient(ctx context.Context, store esv1.GenericS
 	}
 
 	secretGetter, err := p.getOrCreateSecretGetter(ctx, apiEndpoint, caCertificateData)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Yandex.Cloud client: %w", err)
 	}
@@ -196,7 +195,7 @@ func (p *YandexCloudProvider) getOrCreateSecretGetter(ctx context.Context, apiEn
 	return p.secretGetteMap[apiEndpoint], nil
 }
 
-func (p *YandexCloudProvider) getOrCreateIamToken(ctx context.Context, apiEndpoint string, caCertificate []byte, iamTokenCreator iamtoken.IamTokenCreator) (*iamtoken.IamToken, error) {
+func (p *YandexCloudProvider) getOrCreateIamToken(ctx context.Context, apiEndpoint string, caCertificate []byte, iamTokenCreator iamtokencreator.IamTokenCreator) (*iamtokencreator.IamToken, error) {
 	p.iamTokenMapMutex.Lock()
 	defer p.iamTokenMapMutex.Unlock()
 
@@ -206,26 +205,25 @@ func (p *YandexCloudProvider) getOrCreateIamToken(ctx context.Context, apiEndpoi
 
 	iamTokenCacheKey := iamTokenCreator.BuildIamTokenCacheKey()
 	if iamToken, ok := p.iamTokenMap[iamTokenCacheKey]; !ok || !p.isIamTokenUsable(iamToken) {
-		p.logger.Info("creating IAM token for cache-key", "cacheKey", iamTokenCacheKey.ToString())
+		p.logger.Info("creating IAM token", "cacheKey", iamTokenCacheKey.ToLoggableString())
 		iamToken, err := iamTokenCreator.Create(ctx, apiEndpoint, caCertificate)
 		if err != nil {
 			return nil, err
 		}
 
-		p.logger.Info("created IAM token for cache-key", "cacheKey", iamTokenCacheKey.ToString(), "expiresAt", iamToken.ExpiresAt)
-
+		p.logger.Info("created IAM token", "cacheKey", iamTokenCacheKey.ToLoggableString(), "expiresAt", iamToken.ExpiresAt)
 		p.iamTokenMap[iamTokenCacheKey] = iamToken
 	}
 	return p.iamTokenMap[iamTokenCacheKey], nil
 }
 
-func (p *YandexCloudProvider) isIamTokenUsable(iamToken *iamtoken.IamToken) bool {
+func (p *YandexCloudProvider) isIamTokenUsable(iamToken *iamtokencreator.IamToken) bool {
 	now := p.clock.CurrentTime()
 	return now.Add(maxSecretsClientLifetime).Before(iamToken.ExpiresAt)
 }
 
 // Used for testing.
-func (p *YandexCloudProvider) IsIamTokenCached(iamTokenCreator iamtoken.IamTokenCreator) bool { // в самих тестах исправляю в отдельном PR-е с новыми юнит тестами
+func (p *YandexCloudProvider) IsIamTokenCached(iamTokenCreator iamtokencreator.IamTokenCreator) bool {
 	p.iamTokenMapMutex.Lock()
 	defer p.iamTokenMapMutex.Unlock()
 
@@ -261,8 +259,8 @@ func NewIamTokenCreator(
 	namespace string,
 	auth *esv1.YandexAuth,
 	logger logr.Logger,
-	clock clock2.Clock) (iamtoken.IamTokenCreator, error) {
-	var iamTokenCreator iamtoken.IamTokenCreator
+	clock clock2.Clock) (iamtokencreator.IamTokenCreator, error) {
+	var iamTokenCreator iamtokencreator.IamTokenCreator
 	switch {
 	case auth.AuthorizedKey != nil:
 		key, err := resolvers.SecretKeyRef(
@@ -282,7 +280,7 @@ func NewIamTokenCreator(
 			return nil, fmt.Errorf("unable to unmarshal authorized key: %w", err)
 		}
 
-		iamTokenCreator = &iamtoken.AuthorizedKeyIamTokenProvider{
+		iamTokenCreator = &iamtokencreator.AuthorizedKeyIamTokenCreator{
 			AuthorizedKey: authorizedKey,
 		}
 	case auth.Jwt != nil:
@@ -296,7 +294,7 @@ func NewIamTokenCreator(
 			return nil, err
 		}
 
-		// it is not allowed that audience contains newline character
+		// it is not allowed that audience contains newline character because they're used when generating a cache key
 		for _, audience := range auth.Jwt.ServiceAccountRef.Audiences {
 			if strings.Contains(audience, "\n") {
 				return nil, fmt.Errorf("audience '%s' contains newline character which is not allowed", audience)
@@ -309,25 +307,26 @@ func NewIamTokenCreator(
 			ns = auth.Jwt.ServiceAccountRef.Namespace
 		}
 
-		tokenUrl := "https://auth.yandex.cloud/oauth/token"
-		if auth.Jwt.TokenUrl != "" {
-			tokenUrl = auth.Jwt.TokenUrl
+		tokenExchangeEndpoint := "auth.yandex.cloud" // default endpoint for token exchange
+		if auth.Jwt.TokenExchangeEndpoint != "" {
+			tokenExchangeEndpoint = auth.Jwt.TokenExchangeEndpoint
 		}
 
-		iamTokenCreator = &iamtoken.JwtAuthIamTokenProvider{
-			YandexIamServiceAccountID: auth.Jwt.IamServiceAccountID,
-			ServiceAccountName:        auth.Jwt.ServiceAccountRef.Name,
-			Namespace:                 ns,
-			Audiences:                 auth.Jwt.ServiceAccountRef.Audiences,
-			TokenUrl:                  tokenUrl,
-			Clock:                     clock,
-			Logger:                    logger,
-			Corev1:                    clientset.CoreV1(),
+		iamTokenCreator = &iamtokencreator.JwtIamTokenCreator{
+			IamServiceAccountID:   auth.Jwt.IamServiceAccountID,
+			K8sServiceAccountName: auth.Jwt.ServiceAccountRef.Name,
+			Namespace:             ns,
+			Audiences:             auth.Jwt.ServiceAccountRef.Audiences,
+			TokenExchangeEndpoint: tokenExchangeEndpoint,
+			Clock:                 clock,
+			Logger:                logger,
+			Corev1:                clientset.CoreV1(),
 		}
 	case auth == nil:
-		iamTokenCreator = &iamtoken.InstanceServiceAccountAuthProvider{}
+		iamTokenCreator = &iamtokencreator.InstanceServiceAccountIamTokenCreator{}
 	default:
 		return nil, errors.New("invalid Yandex Lockbox or Certificate Manager SecretStore")
 	}
+
 	return iamTokenCreator, nil
 }

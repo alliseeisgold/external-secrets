@@ -1,28 +1,11 @@
-/*
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package config
+package common
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"time"
 
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/sdk"
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/endpoint"
-	ycsdk "github.com/yandex-cloud/go-sdk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -52,7 +35,7 @@ func NewGrpcConnection(
 }
 
 func createGrpcConnection(apiEndpoint string, caCertificate []byte) (*grpc.ClientConn, error) {
-	tlsConfig, err := TlsConfig(caCertificate)
+	tlsConfig, err := sdk.TlsConfig(caCertificate)
 	if err != nil {
 		return nil, err
 	}
@@ -87,39 +70,4 @@ func (t PerRPCCredentials) GetRequestMetadata(_ context.Context, _ ...string) (m
 
 func (PerRPCCredentials) RequireTransportSecurity() bool {
 	return true
-}
-
-func BuildSDK(ctx context.Context, apiEndpoint string, creds ycsdk.Credentials, caCertificate []byte) (*ycsdk.SDK, error) {
-	tlsConfig, err := TlsConfig(caCertificate)
-	if err != nil {
-		return nil, err
-	}
-
-	sdk, err := ycsdk.Build(ctx, ycsdk.Config{
-		Credentials: creds,
-		Endpoint:    apiEndpoint,
-		TLSConfig:   tlsConfig,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return sdk, nil
-}
-
-func CloseSDK(ctx context.Context, sdk *ycsdk.SDK) error {
-	return sdk.Shutdown(ctx)
-}
-
-func TlsConfig(caCertificate []byte) (*tls.Config, error) {
-	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
-	if caCertificate != nil {
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM(caCertificate)
-		if !ok {
-			return nil, errors.New("unable to read trusted CA certificates")
-		}
-		tlsConfig.RootCAs = caCertPool
-	}
-	return tlsConfig, nil
 }
