@@ -6767,7 +6767,7 @@ spec:
                                   pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                                   type: string
                               type: object
-                            instanceSA:
+                            instanceServiceAccount:
                               description: Instance Service Account authentication
                               type: object
                             jwt:
@@ -6902,7 +6902,7 @@ spec:
                                   pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                                   type: string
                               type: object
-                            instanceSA:
+                            instanceServiceAccount:
                               description: Instance Service Account authentication
                               type: object
                             jwt:
@@ -17715,7 +17715,7 @@ spec:
                                   pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                                   type: string
                               type: object
-                            instanceSA:
+                            instanceServiceAccount:
                               description: Instance Service Account authentication
                               type: object
                             jwt:
@@ -17850,7 +17850,7 @@ spec:
                                   pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                                   type: string
                               type: object
-                            instanceSA:
+                            instanceServiceAccount:
                               description: Instance Service Account authentication
                               type: object
                             jwt:

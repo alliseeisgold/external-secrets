@@ -20,7 +20,7 @@ import (
 	api "github.com/yandex-cloud/go-genproto/yandex/cloud/lockbox/v1"
 	"google.golang.org/grpc"
 
-	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common"
+	"github.com/external-secrets/external-secrets/pkg/provider/yandex/common/sdk"
 )
 
 // Real/gRPC implementation of LockboxClient.
@@ -29,7 +29,7 @@ type grpcLockboxClient struct {
 }
 
 func NewGrpcLockboxClient(ctx context.Context, apiEndpoint string, caCertificate []byte) (LockboxClient, error) {
-	conn, err := common.NewGrpcConnection(
+	conn, err := sdk.NewGrpcConnection(
 		ctx,
 		apiEndpoint,
 		"lockbox-payload", // taken from https://api.cloud.yandex.net/endpoints
@@ -48,7 +48,7 @@ func (c *grpcLockboxClient) GetPayloadEntries(ctx context.Context, iamToken, sec
 			SecretId:  secretID,
 			VersionId: versionID,
 		},
-		grpc.PerRPCCredentials(common.PerRPCCredentials{IamToken: iamToken}),
+		grpc.PerRPCCredentials(sdk.PerRPCCredentials{IamToken: iamToken}),
 	)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (c *grpcLockboxClient) GetExPayload(ctx context.Context, iamToken, folderID
 	response, err := c.lockboxPayloadClient.GetEx(
 		ctx,
 		request,
-		grpc.PerRPCCredentials(common.PerRPCCredentials{IamToken: iamToken}),
+		grpc.PerRPCCredentials(sdk.PerRPCCredentials{IamToken: iamToken}),
 	)
 	if err != nil {
 		return nil, err

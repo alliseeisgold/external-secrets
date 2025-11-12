@@ -31,7 +31,7 @@ type YandexAuth struct {
 
 	// Instance Service Account authentication
 	// +optional
-	InstanceSA *InstanceSA `json:"instanceSA"`
+	InstanceServiceAccount *InstanceServiceAccount `json:"instanceServiceAccount,omitempty"`
 }
 
 type YandexCAProvider struct {
@@ -66,5 +66,5 @@ type Jwt struct {
 	TokenExchangeEndpoint string `json:"tokenExchangeEndpoint,omitempty"`
 }
 
-type InstanceSA struct {
+type InstanceServiceAccount struct {
 }

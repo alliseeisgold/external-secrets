@@ -96,10 +96,11 @@ func (p *JwtIamTokenCreator) CreateTokenForServiceAccount(ctx context.Context, j
 	return tokenResponse.Status.Token, nil
 }
 
+// https://yandex.cloud/en/docs/iam/operations/wlif/setup-wlif#exchange-jwt-for-iam
 type tokenExchangeResponse struct {
 	AccessToken string `json:"access_token"`
-	ExpiresIn   int64  `json:"expires_in"`
 	TokenType   string `json:"token_type"`
+	ExpiresIn   int64  `json:"expires_in"`
 }
 
 func (p *JwtIamTokenCreator) exchangeJwtForYandexIamToken(ctx context.Context, jwt string) (*tokenExchangeResponse, error) {

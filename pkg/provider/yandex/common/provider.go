@@ -322,10 +322,10 @@ func NewIamTokenCreator(
 			Logger:                logger,
 			Corev1:                clientset.CoreV1(),
 		}
-	case auth.InstanceSA != nil, auth == nil:
+	case auth == nil || auth.InstanceServiceAccount != nil:
 		iamTokenCreator = &iamtokencreator.InstanceServiceAccountIamTokenCreator{}
 	default:
-		return nil, errors.New("invalid Yandex Lockbox or Certificate Manager SecretStore")
+		return nil, errors.New("invalid Yandex Lockbox or Certificate Manager SecretStore: auth configuration is invalid")
 	}
 
 	return iamTokenCreator, nil
