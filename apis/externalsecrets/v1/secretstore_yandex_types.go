@@ -18,10 +18,20 @@ import (
 	esmeta "github.com/external-secrets/external-secrets/apis/meta/v1"
 )
 
+// +kubebuilder:validation:MinProperties=1
+// +kubebuilder:validation:MaxProperties=1
 type YandexAuth struct {
 	// The authorized key used for authentication
 	// +optional
-	AuthorizedKey esmeta.SecretKeySelector `json:"authorizedKeySecretRef,omitempty"`
+	AuthorizedKey *esmeta.SecretKeySelector `json:"authorizedKeySecretRef,omitempty"`
+
+	// JWT authentication
+	// +optional
+	Jwt *Jwt `json:"jwt,omitempty"`
+
+	// Instance Service Account authentication
+	// +optional
+	InstanceServiceAccount *InstanceServiceAccount `json:"instanceServiceAccount,omitempty"`
 }
 
 type YandexCAProvider struct {
@@ -42,4 +52,19 @@ type ByName struct {
 type FetchingPolicy struct {
 	ByID   *ByID   `json:"byID,omitempty"`
 	ByName *ByName `json:"byName,omitempty"`
+}
+
+type Jwt struct {
+	// Yandex Cloud service account ID
+	IamServiceAccountID string `json:"iamServiceAccountID"`
+
+	// Kubernetes service account reference
+	ServiceAccountRef esmeta.ServiceAccountSelector `json:"serviceAccountRef"`
+
+	// Endpoint for exchanging k8s service account token to Yandex IAM token
+	// +optional
+	TokenExchangeEndpoint string `json:"tokenExchangeEndpoint,omitempty"`
+}
+
+type InstanceServiceAccount struct {
 }
