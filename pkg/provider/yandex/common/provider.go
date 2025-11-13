@@ -296,7 +296,7 @@ func NewIamTokenCreator(
 
 		// it is not allowed that audience contains newline character because they're used when generating a cache key
 		for _, audience := range auth.Jwt.ServiceAccountRef.Audiences {
-			if strings.Contains(audience, "\n") {
+			if strings.Contains(audience, "\\n") {
 				return nil, fmt.Errorf("audience '%s' contains newline character which is not allowed", audience)
 			}
 		}
